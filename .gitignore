@@ -13,3 +13,17 @@ output_files/
 
 # Python
 __pycache__/
+
+# LaTeX: build files
+*.aux
+*.bbl
+*.blg
+*.lof
+*.lot
+*.log
+*.out
+*.toc
+*.synctex.gz
+*.fls
+*.fdb_latexmk
+*.xdv
