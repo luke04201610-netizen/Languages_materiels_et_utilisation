@@ -27,5 +27,4 @@ module tb_riscvproc;
     $display("Timeout: the program did not reach ebreak");
     $finish;
   end
-end 
 endmodule

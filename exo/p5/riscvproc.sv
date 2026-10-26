@@ -105,7 +105,7 @@ module riscvproc (
   integer index;
 
   initial begin
-    $readmemh("test_memoire.txt", memory);
+    $readmemh("instr2.txt", memory);
     // initialize program counter to 0
     pc = 0;
     // initialize all registers to 0
