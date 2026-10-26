@@ -1,0 +1,272 @@
+\section{Création du système}
+\label{sec:systeme}
+
+Dans le système final (figure~\ref{fig:systeme}), le programme reste dans la mémoire interne du
+processeur et les données sont stockées dans le bloc \texttt{quadram} de la
+partie~\ref{sec:quadram}. Le bloc de plus haut niveau, \texttt{systeme}, est écrit en VHDL : il
+instancie le processeur Verilog en tant que \og component\fg{} ainsi que le bloc
+\texttt{quadram}, et les relie par des signaux internes.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[font=\small, >=Stealth, line width=0.6pt,
+    bloc/.style={draw, rounded corners=2pt, fill=gray!8},
+    sous/.style={draw, align=center, fill=white, font=\footnotesize},
+    ram/.style={draw, align=center, fill=blue!7, minimum width=2.4cm, minimum height=0.95cm,
+                inner sep=2pt, font=\footnotesize},
+    bus/.style={font=\footnotesize, above}]
+
+  % processeur
+  \node[bloc, minimum width=3.6cm, minimum height=6cm] (cpu) at (0,0) {};
+  \node[anchor=north, align=center] at (cpu.north) {\textbf{CPU : riscvproc}\\Verilog};
+  \node[sous, minimum width=2.9cm] at (0,0.4) {mémoire programme\\4096 $\times$ 32 bits\\
+        (\texttt{\$readmemh})};
+  \node[sous, minimum width=2.9cm] at (0,-1.7) {registres\\x0 à x31};
+
+  % bloc quadram
+  \node[bloc, minimum width=6.4cm, minimum height=6cm] (mem) at (8.6,0) {};
+  \node[anchor=north, align=center] at (mem.north) {\textbf{MEM : quadram}\\VHDL};
+  \node[sous, fill=orange!12, minimum width=1.5cm, minimum height=4.1cm] (dec) at (6.6,-0.55)
+        {déco-\\deur\\2 vers 4};
+  \foreach \i/\y in {0/1.15, 1/0, 2/-1.15, 3/-2.3} {
+    \node[ram] (r\i) at (9.9,\y) {Sync\_Ram \i\\1024 $\times$ 32 bits};
+    \draw[->] (dec.east |- r\i.west) -- node[above, font=\scriptsize] {cs(\i)} (r\i.west);
+  }
+
+  % bus entre le processeur et la mémoire
+  \draw[->] (cpu.east |- 0,2.1)  -- node[bus] {\texttt{address[11:0]}}     (mem.west |- 0,2.1);
+  \draw[->] (cpu.east |- 0,1.4)  -- node[bus] {\texttt{dataToWrite[31:0]}} (mem.west |- 0,1.4);
+  \draw[->] (cpu.east |- 0,0.7)  -- node[bus] {\texttt{we}}                (mem.west |- 0,0.7);
+  \draw[<-] (cpu.east |- 0,-0.6) -- node[bus] {\texttt{dataToRead[31:0]}}  (mem.west |- 0,-0.6);
+
+  % horloge et reset
+  \draw[<-] (cpu.west |- 0,1.0)  -- ++(-0.9,0) node[left] {\texttt{clock}};
+  \draw[<-] (cpu.west |- 0,0.2)  -- ++(-0.9,0) node[left] {\texttt{reset}};
+  \draw[<-] (mem.south) -- ++(0,-0.6) node[below] {\texttt{clock}};
+\end{tikzpicture}
+\caption{Système final : processeur et bloc \texttt{quadram}. Les bits 11--10 de l'adresse
+attaquent le décodeur ; les bits 9--0, la donnée à écrire, \texttt{we} et l'horloge sont communs
+aux quatre RAM, dont les sorties sont reliées (bus trois états).}
+\label{fig:systeme}
+\end{figure}
+
+% ---------------------------------------------------------------------------
+\subsection{Accès aux données dans la mémoire externe}
+\label{sec:lwsw}
+
+Les données n'étant plus dans \texttt{memory}, seules les instructions de manipulation des
+données changent : \texttt{lw} et \texttt{sw} passent maintenant par le bus
+(code~\ref{lst:lwsw}). \texttt{sw} place l'adresse, la donnée et \texttt{we} = 1 sur le bus ;
+\texttt{lw} place l'adresse, puis recopie \texttt{dataToRead} dans le registre destination. Les
+autres instructions ne sont pas modifiées.
+
+\begin{lstlisting}[style=verilog, caption={Instructions \texttt{lw} et \texttt{sw} reliées au bloc \texttt{quadram}}, label={lst:lwsw}]
+`LW: begin
+  address   = regs[`RS1] + `I_IMM;   // address on the bus (falling edge)
+  @(negedge clock);                  // rising edge in between: the quadram samples the address
+  regs[`RD] = dataToRead;            // the word read is valid now
+end
+...
+`SW: begin
+  address     = regs[`RS1] + `S_IMM; // address and data on the bus
+  dataToWrite = regs[`RS2];
+  we          = 1;
+  @(negedge clock);                  // rising edge in between: the quadram writes the word
+  we          = 0;
+end
+\end{lstlisting}
+
+% ---------------------------------------------------------------------------
+\subsection{Synchronisation avec le bloc quadram}
+\label{sec:synchro}
+
+Le bloc \texttt{quadram} est synchrone : l'écriture a lieu sur le front montant de l'horloge, et
+la lecture passe par le registre d'adresse \texttt{read\_address} de \texttt{Sync\_Ram} : la donnée
+lue ne correspond à une nouvelle adresse qu'après le front montant qui a mémorisé cette adresse.
+Le processeur travaillant sur le front descendant, un accès se déroule ainsi :
+\begin{enumerate}
+\item front descendant : le processeur place l'adresse sur le bus et, pour \texttt{sw}, la donnée
+et \texttt{we} = 1 ;
+\item front montant suivant : la RAM sélectionnée écrit la donnée, ou mémorise l'adresse de
+lecture ;
+\item front descendant suivant : \texttt{lw} recopie \texttt{dataToRead}, valide depuis le front
+montant ; \texttt{sw} remet \texttt{we} à 0.
+\end{enumerate}
+
+L'attente est réalisée par un second \lstinline[style=vlinline]|@(negedge clock)| dans
+l'instruction : \texttt{lw} et \texttt{sw} durent deux périodes, les autres instructions une
+seule. Le tableau~\ref{tab:chrono} et la figure~\ref{fig:lw} montrent cette séquence pour
+\texttt{test\_base} exécuté sur le système. À 140~ns, \texttt{lw x9, 4(x2)} place l'adresse 104,
+mais \texttt{dataToRead} vaut encore $-7$, le mot 96 écrit juste avant ; la donnée 107
+n'apparaît qu'après le front montant de 145~ns. Sans l'attente, \texttt{lw} lirait donc l'ancien
+mot.
+
+\begin{table}[H]
+\centering
+\begin{tabular}{rcll}
+\toprule
+Temps & Front & Instruction & Bus et registres \\
+\midrule
+100~ns & $\downarrow$ & \texttt{sw x3, 4(x2)}  & \texttt{address} = 104, \texttt{dataToWrite} = 107, \texttt{we} = 1 \\
+105~ns & $\uparrow$   &                        & la RAM 0 écrit 107 au mot 104 \\
+110~ns & $\downarrow$ &                        & \texttt{we} = 0 \\
+120~ns & $\downarrow$ & \texttt{sw x1, -4(x2)} & \texttt{address} = 96, \texttt{dataToWrite} = $-7$, \texttt{we} = 1 \\
+140~ns & $\downarrow$ & \texttt{lw x9, 4(x2)}  & \texttt{address} = 104, \texttt{dataToRead} = $-7$ (mot 96) \\
+145~ns & $\uparrow$   &                        & adresse 104 mémorisée : \texttt{dataToRead} = 107 \\
+150~ns & $\downarrow$ &                        & x9 = 107 \\
+160~ns & $\downarrow$ & \texttt{lw x10, -4(x2)} & instruction suivante \\
+\bottomrule
+\end{tabular}
+\caption{Accès à la mémoire pendant \texttt{test\_base} sur le système}
+\label{tab:chrono}
+\end{table}
+
+\capture{p5-lw.png}{ModelSim, dossier \texttt{exo/p5}, programme \texttt{test\_base} : signaux
+\texttt{clock}, \texttt{pc}, \texttt{instr}, \texttt{we}, \texttt{address}, \texttt{dataToWrite},
+\texttt{dataToRead}, zoom de 95 à 165~ns}
+{Écritures puis lecture dans le bloc \texttt{quadram} : la donnée lue n'est valide qu'après le
+front montant}{fig:lw}
+
+% ---------------------------------------------------------------------------
+\subsection{Micro-architecture du processeur}
+
+Les ports, l'horloge et le reset nécessaires à cet interfaçage ont été ajoutés à la
+section~\ref{sec:microarchi}. Comme le processeur travaille sur le front descendant et la
+mémoire sur le front montant, aucune autre modification n'a été nécessaire.
+
+% ---------------------------------------------------------------------------
+\subsection{Bloc système en VHDL}
+\label{sec:blocsysteme}
+
+Le fichier \texttt{systeme.vhd} (code~\ref{lst:systeme}) contient :
+\begin{itemize}
+\item la déclaration du \texttt{component} \texttt{riscvproc}, avec le même nom et les mêmes ports
+que le module Verilog, écrits avec des types VHDL (\texttt{std\_logic} et
+\texttt{std\_logic\_vector}) ;
+\item les signaux internes qui forment le bus entre les deux blocs ;
+\item l'instance du bloc \texttt{quadram} générique de la partie~\ref{sec:quadram}, avec
+\texttt{Nbits\_sel} = 2, \texttt{Nbits\_addr} = 10 et \texttt{Nbits\_data} = 32 : quatre RAM de
+1024 mots de 32 bits, soit 4096 mots adressés sur 12 bits, comme le bus d'adresse du processeur ;
+\item les conversions de type : les ports de \texttt{quadram} sont de type \texttt{unsigned},
+ceux du processeur de type \texttt{std\_logic\_vector}.
+\end{itemize}
+
+\begin{lstlisting}[style=vhdl, caption={Extrait de \texttt{systeme.vhd}}, label={lst:systeme}]
+component riscvproc is
+  port (
+    clock       : in  std_logic;
+    reset       : in  std_logic;
+    address     : out std_logic_vector(11 downto 0);
+    dataToWrite : out std_logic_vector(31 downto 0);
+    dataToRead  : in  std_logic_vector(31 downto 0);
+    we          : out std_logic
+  );
+end component riscvproc;
+...
+CPU: riscvproc
+  port map (clock => clock, reset => reset, address => address,
+            dataToWrite => dataToWrite, dataToRead => dataToRead, we => we);
+
+-- 4 RAMs of 1024 words of 32 bits: address(11 downto 10) selects the RAM,
+-- address(9 downto 0) is the word inside the RAM
+MEM: entity work.quadram(RTL)
+  generic map (Nbits_sel => 2, Nbits_addr => 10, Nbits_data => 32)
+  port map (clock => clock, we => we,
+            address => unsigned(address),
+            datain  => unsigned(dataToWrite),
+            dataout => dataOut);
+
+-- the quadram works with unsigned, the processor with std_logic_vector
+dataToRead <= std_logic_vector(dataOut);
+\end{lstlisting}
+
+Le testbench \texttt{systeme\_tb.vhd} génère l'horloge (période 10~ns) et le reset (à 1 jusqu'à
+12~ns) ; un processus de surveillance arrête la simulation au bout de 100~$\mu$s si le programme
+n'atteint jamais \texttt{ebreak}. Les blocs des parties 2 et 3 sont réutilisés sans copie : ils
+sont compilés depuis leurs dossiers, dans la même bibliothèque \texttt{work} que le processeur
+(code~\ref{lst:compil}).
+
+\begin{lstlisting}[style=code, caption={Compilation et simulation du système dans ModelSim}, label={lst:compil}]
+vlib work
+vlog -sv riscvproc.sv
+vcom -93 ../p2_q5/ramchip.vhd ../p3_q4/decoder.vhd ../p3_q4/quadram_for.vhd systeme.vhd systeme_tb.vhd
+vsim -voptargs=+acc -onfinish stop work.systeme_tb
+run -all
+\end{lstlisting}
+
+ModelSim associe le \texttt{component} au module Verilog de même nom présent dans la
+bibliothèque. Si ce module n'a pas été compilé, ModelSim ne donne qu'un avertissement
+(\og Component instance "CPU : riscvproc" is not bound\fg{}) et simule le système sans
+processeur : c'est ce qui nous est arrivé au premier essai, et la simulation s'est alors arrêtée
+sur le délai de surveillance de 100~$\mu$s.
+
+% ---------------------------------------------------------------------------
+\subsection{Validation}
+\label{sec:validsysteme}
+
+\paragraph{Programme instr2.}
+À la fin du programme, x1 = 1 et x2 = 6, et le mot 65 se trouve maintenant dans la RAM 0 du bloc
+\texttt{quadram} (\texttt{RAMS(0)/RAM/ram(65)} = 6, figure~\ref{fig:instr2}). La simulation se
+termine à 80~ns au lieu de 70~ns, car l'instruction \texttt{sw} dure deux périodes.
+
+\capture{p5-instr2.png}{ModelSim, dossier \texttt{exo/p5}, programme \texttt{instr2} : signaux
+\texttt{clock}, \texttt{reset}, \texttt{pc}, \texttt{instr}, \texttt{we}, \texttt{address},
+\texttt{dataToWrite}, \texttt{dataToRead}, de 0 à 80~ns}
+{Système complet avec le programme \texttt{instr2}}{fig:instr2}
+
+\paragraph{Accès aux quatre RAM.}
+Le programme \texttt{test\_memoire} écrit 11, 22, 33 et 44 au même déplacement 5 dans chacune des
+quatre RAM (mots 5, 1029, 2053 et 3077), puis relit ces mots ; il teste aussi un déplacement
+négatif, la frontière entre les RAM 0 et 1 (mot 1023) et une lecture juste après une écriture à
+la même adresse. Les résultats sont ceux attendus (tableau~\ref{tab:memoire}). Pendant les quatre
+écritures, le signal \texttt{cs} du décodeur prend successivement les valeurs \texttt{0001},
+\texttt{0010}, \texttt{0100} et \texttt{1000} (figure~\ref{fig:memoire}). La simulation se
+termine à 350~ns : le programme compte 23 instructions, dont 11 \texttt{lw} ou \texttt{sw} de
+deux périodes, soit 34 périodes à partir de la première instruction à 20~ns.
+
+\begin{table}[H]
+\centering
+\begin{tabular}{lll}
+\toprule
+Instructions & Destination & Résultat \\
+\midrule
+4 \texttt{sw} au déplacement 5 de chaque RAM & mots 5, 1029, 2053, 3077 & 11, 22, 33, 44 \\
+4 \texttt{lw} de ces mots & x20, x21, x22, x23 & 11, 22, 33, 44 \\
+\texttt{add} des quatre valeurs & x24 & 110 \\
+\texttt{lw x25, -5(x8)}, avec x8 = 3082 & x25 & 44 \\
+\texttt{sw x24, -1(x5)}, avec x5 = 1024 & mot 1023 & 110 \\
+\texttt{lw x26, 1023(x0)} & x26 & 110 \\
+\bottomrule
+\end{tabular}
+\caption{Résultats de \texttt{test\_memoire} sur le système}
+\label{tab:memoire}
+\end{table}
+
+\capture{p5-memoire.png}{ModelSim, dossier \texttt{exo/p5}, programme \texttt{test\_memoire} :
+signaux \texttt{clock}, \texttt{pc}, \texttt{we}, \texttt{address}, \texttt{cs} (\texttt{/systeme\_tb/UUT/MEM/cs}),
+\texttt{dataToWrite}, zoom de 80 à 180~ns}
+{Les quatre écritures de \texttt{test\_memoire} : le décodeur sélectionne successivement les
+quatre RAM}{fig:memoire}
+
+Ce test a révélé une erreur dans notre \texttt{Sync\_Ram} de la partie~\ref{sec:ram} :
+l'écriture n'était pas conditionnée par \texttt{cs} (\lstinline[style=vlinline]|if we = '1' then|).
+Comme les quatre RAM partagent l'adresse, la donnée et \texttt{we}, chaque \texttt{sw} écrivait
+dans les quatre RAM au même déplacement, et les quatre mots relus valaient tous 44 (x24 = 176 au
+lieu de 110). La condition est devenue \lstinline[style=vlinline]|if we = '1' and cs = '1' then|.
+Le testbench de \texttt{quadram} de la partie~\ref{sec:quadram} détecte aussi cette erreur
+(messages d'erreur sur les RAM 0 à 2) lorsqu'il est exécuté avec la RAM non corrigée.
+
+\paragraph{Programme test\_base.}
+Les registres ont les mêmes valeurs qu'à la section~\ref{sec:microarchi}, et les mots 104 et 96
+se trouvent maintenant dans la RAM 0 du bloc \texttt{quadram} (107 et $-7$). La simulation se
+termine à 200~ns au lieu de 160~ns : les quatre accès à la mémoire durent chacun une période de
+plus.
+
+% ---------------------------------------------------------------------------
+\subsection{Différences avec le premier programme}
+\label{sec:instr}
+
+\acompleter{comparer \texttt{instr2.txt} avec le premier programme de test (\texttt{instr.txt},
+sur Madoc) : décoder les deux programmes instruction par instruction, en particulier les adresses
+des \texttt{lw} et \texttt{sw}, et expliquer pourquoi le premier programme devait être modifié
+pour fonctionner avec le système.}

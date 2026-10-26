@@ -1,0 +1,31 @@
+\documentclass[a4paper,12pt]{article}
+\usepackage{template}
+\addbibresource{biblio.bib}
+
+% Compilation : pdflatex -> biber -> pdflatex -> pdflatex
+% (ou latexmk -pdf main.tex)
+
+\begin{document}
+\input{titlepage}
+
+% Sommaire
+\tableofcontents
+\newpage
+
+\input{sections/introduction}
+
+% Numérotation des parties identique à celle du sujet (parties 2 à 5)
+\setcounter{section}{1}
+\input{sections/partie2}
+\input{sections/partie3}
+\input{sections/partie4}
+\input{sections/partie5}
+
+\input{sections/conclusion}
+
+\newpage
+\listoffigures
+\listoftables
+\printbibliography[heading=bibintoc, title={Bibliographie}]
+
+\end{document}
