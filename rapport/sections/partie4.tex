@@ -151,7 +151,7 @@ la spécification : \texttt{4(x2)} désigne le mot situé 4 mots après l'adress
 Pour tester les immédiats négatifs, les accès mémoire avec un déplacement positif et négatif,
 et le registre \texttt{x0}, nous avons écrit le programme \texttt{test\_base}
 (code~\ref{lst:testbase}). Ses résultats sont donnés dans le tableau~\ref{tab:testbase}, relevés
-dans ModelSim avec la commande \texttt{examine} (code~\ref{lst:transbase}) : le modèle d'origine
+dans ModelSim avec la commande \texttt{examine} (figure~\ref{fig:testbase}) : le modèle d'origine
 présente trois erreurs.
 
 \begin{lstlisting}[style=code, caption={Programme de test \texttt{test\_base.s}}, label={lst:testbase}]
@@ -197,21 +197,14 @@ mot 0   & première instruction & \texttt{ff900093} & 4089 & \texttt{ff900093} \
 \label{tab:testbase}
 \end{table}
 
-\begin{lstlisting}[style=code, caption={Transcript ModelSim : \texttt{test\_base} avec le modèle d'origine, puis avec le modèle corrigé}, label={lst:transbase}]
-# Stopped at riscvproc_original.sv line 149
-examine -radix decimal /system/regs
-# {5 4089 100 -3989 4080 4095 3 800 511 4089 4089 10 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0}
-examine -radix decimal {/system/memory[0]} {/system/memory[96]} {/system/memory[104]}
-# 4089 x x
+\capture[0.8\linewidth]{p4-test-base.png}{Transcript ModelSim, dossier \texttt{exo/p4\_q1} :
+\texttt{test\_base} avec le modèle d'origine, puis avec le modèle corrigé}
+{Transcript ModelSim : \texttt{test\_base} avec le modèle d'origine, puis avec le modèle
+corrigé}{fig:testbase}
 
-# Stopped at riscvproc-2.sv line 149
-examine -radix decimal /system/regs
-# {0 -7 100 107 -16 -1 3 800 536870911 107 -7 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0}
-examine -radix hexadecimal {/system/memory[0]}
-# ff900093
-examine -radix decimal {/system/memory[96]} {/system/memory[104]}
-# -7 107
-\end{lstlisting}
+Le message \og erreur : mauvaise valeur dans op-code\fg{} affiché au lancement ne vient pas du
+programme : ce modèle lit l'instruction par une affectation non bloquante, et l'instruction n'est
+pas encore définie à la première période (section~\ref{sec:microarchi}).
 
 \paragraph{Immédiats non étendus en signe.}
 Le modèle définissait \lstinline[style=vlinline]|`define I_IMM $signed(instr[31:20])|. Or, en

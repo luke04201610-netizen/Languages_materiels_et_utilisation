@@ -131,13 +131,14 @@
 
 % Capture d'écran ModelSim : affichée si le fichier existe dans figures/,
 % sinon un cadre rappelle quoi capturer
-% \capture{fichier}{ce qu'il faut capturer}{légende}{étiquette}
-\newcommand{\capture}[4]{%
+% \capture[largeur]{fichier}{ce qu'il faut capturer}{légende}{étiquette}
+% (largeur facultative, \linewidth par défaut)
+\newcommand{\capture}[5][\linewidth]{%
     \begin{figure}[H]
     \centering
-    \IfFileExists{figures/#1}{\includegraphics[width=\linewidth]{figures/#1}}{%
+    \IfFileExists{figures/#2}{\includegraphics[width=#1]{figures/#2}}{%
         \fcolorbox{red}{red!5}{\parbox[c][3.2cm][c]{0.92\linewidth}{\centering
-        \textcolor{red}{\textbf{Capture à insérer :} \texttt{figures/#1}}\\[2mm]\small #2}}}
-    \caption{#3}
-    \label{#4}
+        \textcolor{red}{\textbf{Capture à insérer :} \texttt{figures/#2}}\\[2mm]\small #3}}}
+    \caption{#4}
+    \label{#5}
     \end{figure}}
