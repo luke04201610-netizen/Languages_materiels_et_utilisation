@@ -96,10 +96,10 @@ montant ; \texttt{sw} remet \texttt{we} à 0.
 L'attente est réalisée par un second \lstinline[style=vlinline]|@(negedge clock)| dans
 l'instruction : \texttt{lw} et \texttt{sw} durent deux périodes, les autres instructions une
 seule. Le tableau~\ref{tab:chrono} et la figure~\ref{fig:lw} montrent cette séquence pour
-\texttt{test\_base} exécuté sur le système. À 140~ns, \texttt{lw x9, 4(x2)} place l'adresse 104,
-mais \texttt{dataToRead} vaut encore $-7$, le mot 96 écrit juste avant ; la donnée 107
-n'apparaît qu'après le front montant de 145~ns. Sans l'attente, \texttt{lw} lirait donc l'ancien
-mot.
+\texttt{test\_base} exécuté sur le système. À 140~ns (premier curseur), \texttt{lw x9, 4(x2)}
+place l'adresse 104, mais \texttt{dataToRead} vaut encore $-7$, le mot 96 écrit juste avant ; la
+donnée 107 n'apparaît qu'après le front montant de 145~ns (second curseur). Sans l'attente,
+\texttt{lw} lirait donc l'ancien mot.
 
 \begin{table}[H]
 \centering
@@ -122,10 +122,10 @@ Temps & Front & Instruction & Bus et registres \\
 \end{table}
 
 \capture{p5-lw.png}{ModelSim, dossier \texttt{exo/p5}, programme \texttt{test\_base} : signaux
-\texttt{clock}, \texttt{pc}, \texttt{instr}, \texttt{we}, \texttt{address}, \texttt{dataToWrite},
-\texttt{dataToRead}, zoom de 95 à 165~ns}
+\texttt{clock}, \texttt{reset}, \texttt{pc}, \texttt{instr}, \texttt{we}, \texttt{address},
+\texttt{cs}, \texttt{dataToWrite}, \texttt{dataToRead}, zoom de 95 à 155~ns}
 {Écritures puis lecture dans le bloc \texttt{quadram} : la donnée lue n'est valide qu'après le
-front montant}{fig:lw}
+front montant (curseurs à 140 et 145~ns)}{fig:lw}
 
 % ---------------------------------------------------------------------------
 \subsection{Micro-architecture du processeur}
@@ -206,12 +206,14 @@ sur le délai de surveillance de 100~$\mu$s.
 
 \paragraph{Programme instr2.}
 À la fin du programme, x1 = 1 et x2 = 6, et le mot 65 se trouve maintenant dans la RAM 0 du bloc
-\texttt{quadram} (\texttt{RAMS(0)/RAM/ram(65)} = 6, figure~\ref{fig:instr2}). La simulation se
+\texttt{quadram} (\texttt{RAMS(0)/RAM/ram(65)} = 6). Sur la figure~\ref{fig:instr2},
+\texttt{sw x2, 64(x1)} place à 60~ns l'adresse 65, la donnée 6 et \texttt{we} = 1 ; après le
+front montant de 65~ns, \texttt{dataToRead} relit 6 à cette adresse. La simulation se
 termine à 80~ns au lieu de 70~ns, car l'instruction \texttt{sw} dure deux périodes.
 
 \capture{p5-instr2.png}{ModelSim, dossier \texttt{exo/p5}, programme \texttt{instr2} : signaux
 \texttt{clock}, \texttt{reset}, \texttt{pc}, \texttt{instr}, \texttt{we}, \texttt{address},
-\texttt{dataToWrite}, \texttt{dataToRead}, de 0 à 80~ns}
+\texttt{cs}, \texttt{dataToWrite}, \texttt{dataToRead}, de 0 à 80~ns}
 {Système complet avec le programme \texttt{instr2}}{fig:instr2}
 
 \paragraph{Accès aux quatre RAM.}
@@ -220,7 +222,10 @@ quatre RAM (mots 5, 1029, 2053 et 3077), puis relit ces mots ; il teste aussi un
 négatif, la frontière entre les RAM 0 et 1 (mot 1023) et une lecture juste après une écriture à
 la même adresse. Les résultats sont ceux attendus (tableau~\ref{tab:memoire}). Pendant les quatre
 écritures, le signal \texttt{cs} du décodeur prend successivement les valeurs \texttt{0001},
-\texttt{0010}, \texttt{0100} et \texttt{1000} (figure~\ref{fig:memoire}). La simulation se
+\texttt{0010}, \texttt{0100} et \texttt{1000} (figure~\ref{fig:memoire}) ; les curseurs, à 90,
+110, 130 et 150~ns, montrent que chaque \texttt{sw} dure deux périodes. Avant chaque écriture,
+\texttt{dataToRead} vaut X, car la RAM sélectionnée ne contient encore rien au mot lu ; la
+valeur écrite apparaît au front montant suivant. La simulation se
 termine à 350~ns : le programme compte 23 instructions, dont 11 \texttt{lw} ou \texttt{sw} de
 deux périodes, soit 34 périodes à partir de la première instruction à 20~ns.
 
@@ -243,8 +248,8 @@ Instructions & Destination & Résultat \\
 \end{table}
 
 \capture{p5-memoire.png}{ModelSim, dossier \texttt{exo/p5}, programme \texttt{test\_memoire} :
-signaux \texttt{clock}, \texttt{pc}, \texttt{we}, \texttt{address}, \texttt{cs} (\texttt{/systeme\_tb/UUT/MEM/cs}),
-\texttt{dataToWrite}, zoom de 80 à 180~ns}
+signaux \texttt{clock}, \texttt{reset}, \texttt{pc}, \texttt{instr}, \texttt{we}, \texttt{address},
+\texttt{cs} (\texttt{/systeme\_tb/UUT/MEM/cs}), \texttt{dataToWrite}, \texttt{dataToRead}, zoom de 50 à 170~ns}
 {Les quatre écritures de \texttt{test\_memoire} : le décodeur sélectionne successivement les
 quatre RAM}{fig:memoire}
 

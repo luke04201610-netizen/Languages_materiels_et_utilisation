@@ -350,7 +350,7 @@ reg[63:0] prod;   // 64-bit product for MULH, MULHSU, MULHU
 \end{lstlisting}
 
 Le programme \texttt{test\_rv32im} teste les huit instructions et les trois cas particuliers
-(tableau~\ref{tab:rv32imres} et code~\ref{lst:transrv32im}). Avant la modification, le processeur affichait onze fois
+(tableau~\ref{tab:rv32imres} et figure~\ref{fig:rv32im}). Avant la modification, le processeur affichait onze fois
 \og erreur : mauvaise instruction arithmétique\fg{} (une fois par instruction de l'extension M)
 et les registres correspondants restaient à 0 ; après la modification, toutes les valeurs sont
 celles attendues.
@@ -378,12 +378,9 @@ Instruction & Registre & Résultat & Remarque \\
 \label{tab:rv32imres}
 \end{table}
 
-\begin{lstlisting}[style=code, caption={Transcript ModelSim : registres après \texttt{test\_rv32im}}, label={lst:transrv32im}]
-# ** Note: $finish    : riscvproc-2.sv(196)
-#    Time: 190 ns  Iteration: 0  Instance: /system
-examine -radix decimal /system/regs
-# {0 -7 2 -14 -3 -1 2147483644 -1 -1 1 1 -2147483648 -1 31 -2147483648 0 -1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0}
-\end{lstlisting}
+\capture{p4-rv32im.png}{Transcript ModelSim, dossier \texttt{exo/p4\_q2} : registres après
+\texttt{test\_rv32im}}
+{Transcript ModelSim : registres après \texttt{test\_rv32im}}{fig:rv32im}
 
 % ---------------------------------------------------------------------------
 \subsection{Adapter la µ-architecture du processeur RISC-V}
@@ -457,14 +454,15 @@ end
 
 Le testbench \texttt{tb\_riscvproc.sv} instancie le processeur, génère une horloge de période
 10~ns et maintient le reset à 1 jusqu'à 12~ns, ce qui laisse un front descendant de reset à
-10~ns. La première instruction est exécutée à 20~ns, puis une instruction toutes les 10~ns
-(figure~\ref{fig:horloge}\footnote{Les chronogrammes de ce rapport sont tracés à partir des
-fichiers VCD enregistrés par ModelSim pendant les simulations (commandes \texttt{vcd file} et
-\texttt{vcd add}).}). Les résultats sont identiques à ceux de la section précédente pour
-les trois programmes : \texttt{test\_rv32im} (18 instructions) se termine à 190~ns,
-\texttt{test\_base} à 160~ns et \texttt{instr2} à 70~ns.
+10~ns. La première instruction est exécutée à 20~ns, puis une instruction toutes les 10~ns.
+Sur la figure~\ref{fig:horloge}, les curseurs marquent la fin du reset (12~ns), la première
+instruction (20~ns) et la fin de la simulation (190~ns). Les 170~ns qui séparent la première
+et la dernière des 18 instructions de \texttt{test\_rv32im} représentent 17 périodes : une
+instruction par période. Les résultats sont identiques à ceux de la section précédente pour
+les trois programmes : \texttt{test\_rv32im} se termine à 190~ns, \texttt{test\_base} à
+160~ns et \texttt{instr2} à 70~ns.
 
 \capture{p4-horloge.png}{ModelSim, dossier \texttt{exo/p4\_q3}, programme \texttt{test\_rv32im} :
-signaux \texttt{clock}, \texttt{reset}, \texttt{pc} et \texttt{instr} de 0 à 200~ns}
-{Processeur avec horloge et reset, début de \texttt{test\_rv32im} : une instruction par
+signaux \texttt{clock}, \texttt{reset}, \texttt{pc} et \texttt{instr} de 0 à 190~ns}
+{Processeur avec horloge et reset, programme \texttt{test\_rv32im} : une instruction par
 période}{fig:horloge}
