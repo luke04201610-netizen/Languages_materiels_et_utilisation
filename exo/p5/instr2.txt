@@ -1,0 +1,8 @@
+// instructions at address 0x0
+@0
+00200093 // addi x1, x0, 2
+00400113 // addi x2, x0, 4
+00110133 // add x2, x2, x1
+001150b3 // srl x1, x2, x1
+0420a023 // sw x2, 64(x1)
+00100073 // ebreak

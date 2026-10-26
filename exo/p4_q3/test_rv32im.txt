@@ -1,0 +1,20 @@
+// instructions at address 0x0
+@0
+ff900093 // addi x1, x0, -7
+00200113 // addi x2, x0, 2
+022081b3 // mul x3, x1, x2
+0220c233 // div x4, x1, x2
+0220e2b3 // rem x5, x1, x2
+0220d333 // divu x6, x1, x2
+0200c3b3 // div x7, x1, x0
+02209433 // mulh x8, x1, x2
+0220b4b3 // mulhu x9, x1, x2
+0220f533 // remu x10, x1, x2
+0220a833 // mulhsu x16, x1, x2
+00100593 // addi x11, x0, 1
+01f00693 // addi x13, x0, 31
+00d595b3 // sll x11, x11, x13
+fff00613 // addi x12, x0, -1
+02c5c733 // div x14, x11, x12
+02c5e7b3 // rem x15, x11, x12
+00100073 // ebreak
