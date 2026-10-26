@@ -1,15 +1,14 @@
 % Page de titre
 \begin{titlepage}
-\begin{figure}
-    \centering
-    \begin{subfigure}{0.35\textwidth}
-        \includegraphics[width=\textwidth]{assets/Logo_Univ_Nantes-optimized.pdf}
-    \end{subfigure}
-    \hfill
-    \begin{subfigure}{0.35\textwidth}
-        \includegraphics[width=\textwidth]{assets/Logo_Polytech_Nantes_entete-optimized.pdf}
-    \end{subfigure}
-\end{figure}
+% logos : simples minipages (une figure flottante prendrait le numéro 1)
+\noindent
+\begin{minipage}{0.35\textwidth}
+    \includegraphics[width=\textwidth]{assets/Logo_Univ_Nantes-optimized.pdf}
+\end{minipage}
+\hfill
+\begin{minipage}{0.35\textwidth}
+    \includegraphics[width=\textwidth]{assets/Logo_Polytech_Nantes_entete-optimized.pdf}
+\end{minipage}
 
 \begin{center}
     \vspace*{\fill}
