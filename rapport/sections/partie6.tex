@@ -1,0 +1,260 @@
+\section{Synthèse du système sur FPGA (partie optionnelle)}
+\label{sec:fpga}
+
+Le modèle de la partie~\ref{sec:systeme} n'est que simulable. Le sujet demande les étapes
+nécessaires pour le rendre synthétisable sur un FPGA Xilinx et, si le temps le permet, de les
+mettre en œuvre. Nous ne disposions ni de carte Xilinx ni de Vivado, mais d'une carte équipée
+d'un FPGA Intel, présentée à la section~\ref{sec:environnement}. Les étapes sont les mêmes
+pour les deux constructeurs ; seuls les outils et le nom des ressources changent
+(tableau~\ref{tab:xilinx-intel}). Les fichiers sont dans \texttt{exo/p6}.
+
+\begin{table}[H]
+\centering
+\begin{tabular}{lll}
+\toprule
+ & Xilinx & Intel (carte utilisée) \\
+\midrule
+Outil & Vivado & Quartus II 13.1 \\
+Contraintes & fichier \texttt{.xdc} & fichiers \texttt{.qsf} (broches) et \texttt{.sdc} (horloges) \\
+Mémoire interne & blocs BRAM de 36~Kbit & blocs M9K de 9~Kbit \\
+Multiplieurs & blocs DSP48 & multiplieurs $18\times18$ \\
+Fichier de configuration & \texttt{.bit} & \texttt{.sof} \\
+\bottomrule
+\end{tabular}
+\caption{Correspondance entre les flots Xilinx et Intel}
+\label{tab:xilinx-intel}
+\end{table}
+
+\subsection{Environnement de travail et carte de développement}
+\label{sec:environnement}
+
+Le travail a été fait sur un PC sous Windows~11, avec les logiciels du
+tableau~\ref{tab:environnement}. La carte utilisée est la carte de développement
+\og New Starter\fg{} d'ALIENTEK (figure~\ref{fig:p6-carte-vue}). Elle est construite autour
+d'un FPGA Intel Cyclone IV E EP4CE10F17C8 : 10\,320 éléments logiques, 46 blocs mémoire M9K
+(414~Kbit au total), 23 multiplieurs $18\times18$ et 2 PLL, dans un boîtier BGA de
+256 broches, en classe de vitesse 8. La carte comporte aussi une SDRAM, un port série et des
+interfaces HDMI et LCD, que nous n'avons pas utilisés : le projet n'emploie que l'oscillateur
+de 50~MHz, le bouton RESET, les quatre touches KEY0 à KEY3, les quatre LED et les six
+afficheurs sept segments. Les numéros de broches sont pris dans le tableau de broches fourni
+avec la carte. Le FPGA est programmé par JTAG, avec un câble USB-Blaster relié au PC.
+
+\begin{table}[H]
+\centering
+\begin{tabular}{lll}
+\toprule
+Élément & Version ou référence & Utilisation \\
+\midrule
+Système & Windows 11 (10.0.26200) & \\
+Quartus II & 13.1.0 Build 162, 64 bits & synthèse, placement-routage, timing, programmation \\
+ModelSim & SE-64 2020.4 & simulation \\
+Carte & ALIENTEK New Starter & FPGA Cyclone IV E EP4CE10F17C8 \\
+Câble & USB-Blaster & programmation par JTAG \\
+\bottomrule
+\end{tabular}
+\caption{Environnement de travail}
+\label{tab:environnement}
+\end{table}
+
+\capture[0.8\linewidth]{p6-carte-vue.jpg}{Photo de la carte New Starter reliée au PC par le
+câble USB-Blaster}
+{La carte ALIENTEK New Starter (Cyclone IV E EP4CE10F17C8) et son câble USB-Blaster}{fig:p6-carte-vue}
+
+\subsection{Étapes nécessaires}
+
+\begin{enumerate}
+\item \textbf{Repérer les constructions non synthétisables.} Les blocs VHDL des parties 2 et 3
+le sont déjà : la RAM à adresse de lecture mémorisée correspond à une mémoire interne
+synchrone. Le processeur, en revanche, attend plusieurs fronts dans un même bloc
+\texttt{always} et utilise \texttt{\$display}, \texttt{\$finish}, une chaîne \texttt{string}
+et l'option \texttt{+prog} : ces éléments n'ont pas d'équivalent matériel.
+\item \textbf{Réécrire le processeur en machine à états synchrone} : un seul bloc
+\texttt{always} sur le front montant, une instruction découpée en états.
+\item \textbf{Fixer la mémoire programme} : une ROM initialisée à la synthèse par
+\texttt{\$readmemh} avec un nom de fichier constant.
+\item \textbf{Traiter le bus trois états interne} : un FPGA n'a pas de tampons trois états à
+l'intérieur de la puce, seulement sur ses broches. L'outil remplace les quatre sorties de
+\texttt{quadram} par un multiplexeur ; le code VHDL peut rester inchangé.
+\item \textbf{Choisir l'horloge et écrire les contraintes} : fréquence compatible avec le
+chemin le plus long, contraintes d'horloge pour l'analyse temporelle.
+\item \textbf{Écrire un niveau supérieur propre à la carte} : bouton de reset resynchronisé,
+affichage du résultat, affectation des broches d'après la documentation de la carte.
+\item \textbf{Synthétiser, placer-router, vérifier le timing}, générer le fichier de
+configuration, programmer le FPGA par JTAG et tester sur la carte.
+\end{enumerate}
+
+\subsection{Processeur synthétisable}
+
+Le nouveau processeur, \texttt{riscvproc\_fpga.v}, garde les instructions et le bus de la
+partie~\ref{sec:systeme}. Il est décrit par une machine à quatre états
+(code~\ref{lst:fsm}) :
+\begin{itemize}
+\item \texttt{FETCH} : la ROM lit l'instruction à l'adresse \texttt{pc} ; la lecture étant
+synchrone, l'instruction est disponible à la période suivante ;
+\item \texttt{EXEC} : l'instruction est exécutée ; pour \texttt{sw}, l'adresse, la donnée et
+\texttt{we} sont présents sur le bus et \texttt{quadram} écrit au front montant qui termine
+la période ;
+\item \texttt{MEM} : uniquement pour \texttt{lw} ; l'adresse a été mémorisée par
+\texttt{quadram} à la fin de \texttt{EXEC}, la donnée lue est copiée dans le registre ;
+\item \texttt{HALT} : atteint par \texttt{ebreak}, qui remplace \texttt{\$finish}.
+\end{itemize}
+Une instruction de calcul ou \texttt{sw} dure donc deux périodes, \texttt{lw} trois. Pendant
+\texttt{EXEC} et \texttt{MEM}, l'adresse est calculée à partir de la même instruction et des
+mêmes registres : elle reste stable, ce qui garantit que le décodeur de \texttt{quadram}
+sélectionne la bonne RAM. Une instruction inconnue est ignorée et met à 1 la sortie
+\texttt{illegal}, à la place du message d'erreur.
+
+\begin{lstlisting}[style=verilog, caption={Machine à états du processeur synthétisable (extrait)}, label={lst:fsm}]
+always @(posedge clock) begin
+  if (reset) begin
+    ...                                    // pc, registers and state cleared
+  end else begin
+    case (state)
+      FETCH: state <= EXEC;
+      EXEC: begin
+        state <= FETCH;
+        pc    <= pc + 12'd1;
+        case (opcode)
+          ARITHMETIC:
+            if (!r_valid)     illegal  <= 1'b1;
+            else if (rd != 0) regs[rd] <= r_result;
+          LOAD:                            // lw: wait for the quadram
+            if (f3 == 3'b010) begin state <= MEM;  pc <= pc; end
+            else              illegal <= 1'b1;
+          EBREAK:             begin state <= HALT; pc <= pc; end
+          ...
+        endcase
+      end
+      MEM: begin                           // lw: the word read is valid now
+        if (rd != 0) regs[rd] <= dataToRead;
+        pc    <= pc + 12'd1;
+        state <= FETCH;
+      end
+      default: state <= HALT;              // HALT: stays here until reset
+    endcase
+  end
+end
+\end{lstlisting}
+
+Les opérations de l'extension M ont été regroupées pour limiter le matériel. Un seul
+multiplieur signé de $33\times33$ bits sert aux quatre multiplications : le bit ajouté
+devant chaque opérande vaut son bit de signe ou 0 selon la variante. Un seul diviseur non
+signé travaille sur les valeurs absolues, et les signes du quotient et du reste sont
+rétablis ensuite. Avec cette méthode, le cas $-2^{31}/(-1)$ donne directement $-2^{31}$ et un
+reste nul, comme l'impose la spécification ; seule la division par zéro est traitée à part.
+
+\subsection{Validation par simulation}
+
+Le système \texttt{systeme\_fpga.vhd} relie ce processeur au bloc \texttt{quadram}, réutilisé
+sans modification. Les quatre programmes des parties précédentes donnent les mêmes résultats
+qu'avec le modèle de la partie~\ref{sec:systeme} (tableau~\ref{tab:fpga-sim}) ; seuls les
+instants changent, puisque chaque instruction dure maintenant deux ou trois périodes. La
+figure~\ref{fig:p6-systeme} montre la fin de \texttt{test\_memoire} : les états 0, 1 et 2
+(\texttt{FETCH}, \texttt{EXEC}, \texttt{MEM}) alternent, l'écriture au mot 1023 est
+relue juste après, puis \texttt{ebreak} fait passer le processeur dans l'état 3
+(\texttt{HALT}).
+
+\begin{table}[H]
+\centering
+\begin{tabular}{lrl}
+\toprule
+Programme & Fin & Résultats \\
+\midrule
+\texttt{instr2} & 140~ns & x1 = 1, x2 = 6, mot 65 = 6 \\
+\texttt{test\_base} & 340~ns & registres du tableau~\ref{tab:testbase}, mots 96 et 104 = $-7$ et 107 \\
+\texttt{test\_rv32im} & 380~ns & valeurs du tableau~\ref{tab:rv32imres} \\
+\texttt{test\_memoire} & 540~ns & x20 à x23 = 11, 22, 33, 44 ; x24 = 110 ; x25 = 44 ; x26 = 110 \\
+\bottomrule
+\end{tabular}
+\caption{Programmes de test sur le processeur synthétisable (horloge de 10~ns)}
+\label{tab:fpga-sim}
+\end{table}
+
+\capture{p6-systeme.png}{ModelSim, dossier \texttt{exo/p6}, \texttt{systeme\_fpga\_tb} :
+fin de \texttt{test\_memoire}}
+{Fin de \texttt{test\_memoire} sur le processeur synthétisable : états de la machine,
+accès à \texttt{quadram} et arrêt sur \texttt{ebreak}}{fig:p6-systeme}
+
+\subsection{Implantation sur la carte}
+
+Le niveau supérieur \texttt{top\_fpga.vhd} adapte le système à la carte. Les noms des ports
+reprennent ceux du tableau de broches du constructeur.
+\begin{itemize}
+\item \textbf{Horloge} : le chemin le plus long passe par le diviseur combinatoire de
+l'extension M, ce qui limite la fréquence maximale à 5,71~MHz. L'horloge de 50~MHz de la
+carte est donc divisée par 16, soit 3,125~MHz. Le fichier \texttt{.sdc} déclare les deux
+horloges (\texttt{create\_clock} et \texttt{create\_generated\_clock}).
+\item \textbf{Reset} : le bouton RESET, actif à 0, est resynchronisé sur l'horloge du
+système ; le reset est aussi actif pendant les deux premières périodes après la
+configuration.
+\item \textbf{Affichage} : les six afficheurs sept segments, à anode commune, montrent un
+registre en décimal (conversion par la méthode \og double dabble\fg{}). Par défaut il s'agit
+de x24, la somme des quatre mots relus ; les touches KEY0 à KEY3 affichent x20 à x23,
+c'est-à-dire les mots relus dans chacune des quatre RAM.
+\item \textbf{LED} : LED0 indique que le programme est terminé, LED1 qu'une instruction
+inconnue a été rencontrée, et LED3 clignote tant que l'horloge fonctionne.
+\end{itemize}
+
+Un testbench, \texttt{top\_fpga\_tb.vhd}, lit les afficheurs comme on les verrait sur la
+carte (figure~\ref{fig:p6-afficheur}) : \og 110\fg{} sans touche, \og 11\fg{} avec KEY0 et
+\og 44\fg{} avec KEY3. Le tableau~\ref{tab:quartus-p6} et la figure~\ref{fig:p6-quartus}
+résument la compilation dans Quartus :
+les quatre \texttt{Sync\_Ram} sont reconnues comme des mémoires internes de
+$1024\times32$~bits de quatre blocs M9K chacune, la ROM occupe un bloc, et le bus trois
+états de \texttt{quadram} est transformé en logique. Toutes les marges de temps sont
+positives.
+
+\capture{p6-afficheur.png}{Transcript ModelSim, dossier \texttt{exo/p6}, \texttt{top\_fpga\_tb}}
+{Lecture des afficheurs simulée : x24 sans touche, x20 avec KEY0, x23 avec KEY3}{fig:p6-afficheur}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{lrr}
+\toprule
+Ressource & Utilisé & Disponible \\
+\midrule
+Éléments logiques & 5\,577 (54~\%) & 10\,320 \\
+Registres & 1\,050 & 10\,320 \\
+Bits de mémoire & 139\,264 (33~\%) & 423\,936 \\
+Blocs M9K & 17 & 46 \\
+Multiplieurs 9 bits & 8 & 46 \\
+Broches & 24 & 180 \\
+\midrule
+Fréquence maximale (modèle lent, 85~°C) & 5,71~MHz & \\
+Fréquence utilisée & 3,125~MHz & \\
+\bottomrule
+\end{tabular}
+\caption{Résultats de compilation Quartus pour l'EP4CE10F17C8 (partie 6)}
+\label{tab:quartus-p6}
+\end{table}
+
+\capture{p6-quartus.png}{Capture de Quartus II 13.1 : projet \texttt{exo/p6/top\_fpga.qpf}
+compilé, rapport \og Flow Summary\fg{}}
+{Le projet \texttt{top\_fpga} compilé dans Quartus II 13.1}{fig:p6-quartus}
+
+Le fichier de configuration \texttt{output\_files/top\_fpga.sof} est ensuite chargé dans le
+FPGA par le Programmer de Quartus, en mode JTAG, avec le câble USB-Blaster
+(figure~\ref{fig:p6-programmer}). Cette configuration est volatile : elle disparaît quand la
+carte est mise hors tension.
+
+\capture[0.6\linewidth]{p6-programmer.png}{Capture du Programmer de Quartus : USB-Blaster [USB-0], mode JTAG,
+fichier \texttt{top\_fpga.sof}, progression à 100~\% (\og Successful\fg{})}
+{Programmation du FPGA avec le Programmer de Quartus}{fig:p6-programmer}
+
+Après programmation par JTAG, la carte affiche 110 et LED0 (marquée LED1 sur la carte)
+s'allume : le programme \texttt{test\_memoire} s'est exécuté sur le FPGA, avec les quatre
+RAM réalisées dans les blocs M9K. Les touches KEY0 à KEY3 affichent 11, 22, 33 et 44, les
+mots relus dans chacune des quatre RAM, et tant que le bouton RESET est enfoncé les registres
+sont à 0 (figure~\ref{fig:p6-carte}).
+
+\begin{figure}[H]
+\centering
+\photo{p6_110.jpg}{sans touche : x24 = 110}\hfill
+\photo{p6_11.jpg}{KEY0 : x20 = 11}\hfill
+\photo{p6_22.jpg}{KEY1 : x21 = 22}\\[3mm]
+\photo{p6_33.jpg}{KEY2 : x22 = 33}\hfill
+\photo{p6_44.jpg}{KEY3 : x23 = 44}\hfill
+\photo{p6_0.jpg}{RESET enfoncé : 0}
+\caption{La carte programmée avec \texttt{test\_memoire}}
+\label{fig:p6-carte}
+\end{figure}

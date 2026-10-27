@@ -1,0 +1,97 @@
+// program at address 0x0 (byte addresses, one word = 4 bytes)
+@0
+// _start: (0x0)
+00100513 // li a0, 1
+123452b7 // lui t0, 0x12345
+12345337 // li t1, 0x12345000
+14629463 // bne t0, t1, fail
+00200513 // li a0, 2
+0040036f // jal t1, next2
+// next2: (0x18)
+00000397 // auipc t2, 0
+12731c63 // bne t1, t2, fail
+00300513 // li a0, 3
+ffb00293 // li t0, -5
+00300313 // li t1, 3
+00100e13 // li t3, 1
+0062a3b3 // slt t2, t0, t1
+13c39063 // bne t2, t3, fail
+0062b3b3 // sltu t2, t0, t1
+10039c63 // bne t2, zero, fail
+ffc2a393 // slti t2, t0, -4
+11c39863 // bne t2, t3, fail
+fff33393 // sltiu t2, t1, -1
+11c39463 // bne t2, t3, fail
+00400513 // li a0, 4
+0000f2b7 // li t0, 0xF0F0
+0f028293 //   (suite)
+0ff2c313 // xori t1, t0, 0x0FF
+0000f3b7 // li t2, 0xF00F
+00f38393 //   (suite)
+0e731663 // bne t1, t2, fail
+00001e37 // li t3, 0x0FF0
+ff0e0e13 //   (suite)
+01c2e333 // or t1, t0, t3
+000103b7 // li t2, 0xFFF0
+ff038393 //   (suite)
+0c731a63 // bne t1, t2, fail
+01c2f333 // and t1, t0, t3
+0f000393 // li t2, 0x00F0
+0c731463 // bne t1, t2, fail
+0f02f313 // andi t1, t0, 0x0F0
+0c731063 // bne t1, t2, fail
+00500513 // li a0, 5
+ff000293 // li t0, -16
+4022d313 // srai t1, t0, 2
+ffc00393 // li t2, -4
+0a731663 // bne t1, t2, fail
+01c2d313 // srli t1, t0, 28
+00f00393 // li t2, 15
+0a731063 // bne t1, t2, fail
+00400e13 // li t3, 4
+41c2d333 // sra t1, t0, t3
+fff00393 // li t2, -1
+08731863 // bne t1, t2, fail
+01c2d333 // srl t1, t0, t3
+100003b7 // li t2, 0x0FFFFFFF
+fff38393 //   (suite)
+08731063 // bne t1, t2, fail
+01c29333 // sll t1, t0, t3
+f0000393 // li t2, -256
+06731a63 // bne t1, t2, fail
+00600513 // li a0, 6
+fff00293 // li t0, -1
+00100313 // li t1, 1
+06534263 // blt t1, t0, fail
+0662e063 // bltu t0, t1, fail
+00535463 // bge t1, t0, ok6
+0580006f // j fail
+// ok6: (0x100)
+0062f463 // bgeu t0, t1, ok6b
+0500006f // j fail
+// ok6b: (0x108)
+00528463 // beq t0, t0, ok6c
+0480006f // j fail
+// ok6c: (0x110)
+00700513 // li a0, 7
+01400593 // li a1, 20
+00000097 // call double
+040080e7 //   (suite)
+02800293 // li t0, 40
+02559863 // bne a1, t0, fail
+00800513 // li a0, 8
+10000293 // li t0, 0x100
+06f00313 // li t1, 111
+0de00393 // li t2, 222
+0062a023 // sw t1, 0(t0)
+0072a223 // sw t2, 4(t0)
+0002ae03 // lw t3, 0(t0)
+006e1863 // bne t3, t1, fail
+0042ae03 // lw t3, 4(t0)
+007e1463 // bne t3, t2, fail
+00000513 // li a0, 0
+// fail: (0x154)
+00100073 // ebreak
+// double: (0x158)
+00b585b3 // add a1, a1, a1
+00008067 // ret

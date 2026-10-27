@@ -153,3 +153,10 @@
     \caption{#4}
     \label{#5}
     \end{figure}}
+
+% Photo de la carte avec une courte légende, pour les grilles de photos
+% \photo[largeur]{fichier}{légende}
+\newcommand{\photo}[3][0.32\linewidth]{%
+    \begin{minipage}[t]{#1}\centering
+    \includegraphics[width=\linewidth]{figures/#2}\\[1mm]{\small #3}
+    \end{minipage}}

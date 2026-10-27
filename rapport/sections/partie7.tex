@@ -1,0 +1,166 @@
+\section{Compatibilité avec un compilateur C (partie optionnelle)}
+\label{sec:compilateur}
+
+Jusqu'ici, les programmes étaient écrits à la main en hexadécimal. Le sujet demande les
+étapes nécessaires pour que le processeur exécute le code produit par un compilateur
+RISC-V, en considérant le compilateur \og RISC-V (32-bits) gcc (trunk)\fg{} du site Compiler
+Explorer (\texttt{godbolt.org}). Nous les avons mises en œuvre à partir du processeur
+synthétisable de la partie~\ref{sec:fpga} ; les fichiers sont dans \texttt{exo/p7}.
+
+\subsection{Étapes nécessaires}
+
+Le code produit par le compilateur suppose un processeur conforme à la spécification et un
+environnement qui respecte la convention d'appel \texttt{ilp32} (pile, registres
+d'arguments et de retour). Ce n'était pas le cas de notre système :
+\begin{enumerate}
+\item \textbf{Adressage par octets} : \texttt{pc} avance de 4 à chaque instruction et les
+adresses de \texttt{lw} et \texttt{sw} sont des adresses d'octets, alors que notre modèle
+comptait en mots de 32 bits (section~\ref{sec:adapter}).
+\item \textbf{Jeu d'instructions RV32I complet} : le compilateur emploie librement
+\texttt{lui}, \texttt{auipc}, \texttt{jal}, \texttt{jalr}, les six branchements, les
+comparaisons, les décalages par une constante, etc. Il faut aussi interdire les
+instructions compressées de 16 bits, en compilant avec \texttt{-march=rv32im} au lieu de
+la valeur par défaut \texttt{rv32gc}.
+\item \textbf{Code de démarrage et pile} : avant \texttt{main}, il faut initialiser le
+pointeur de pile \texttt{sp} sur une mémoire de données, appeler \texttt{main}, puis arrêter
+le processeur. Le résultat de \texttt{main} est rendu dans \texttt{a0} (x10).
+\item \textbf{Édition de liens et chargement} : placer le code à l'adresse 0, résoudre les
+appels de fonctions, puis produire le fichier hexadécimal lu par \texttt{\$readmemh}.
+\item \textbf{Répartition des mémoires} : le code reste dans la ROM du processeur, la pile
+est dans \texttt{quadram}.
+\end{enumerate}
+
+\subsection{Compilation sur Compiler Explorer}
+
+Le programme de test (code~\ref{lst:programme-c}) utilise une boucle, un tableau local, deux
+fonctions, une multiplication et un reste ; il n'a ni variable globale ni appel de
+bibliothèque. Il est compilé avec \texttt{-O0 -march=rv32im -mabi=ilp32} : sans
+optimisation, le compilateur ne précalcule pas le résultat et toutes les variables passent
+par la pile, ce qui teste les accès à \texttt{quadram}. Le code assembleur obtenu
+(figure~\ref{fig:p7-godbolt}) compte 104 instructions.
+
+\noindent\begin{minipage}{\linewidth}
+\begin{lstlisting}[style=code, caption={Programme C de test (\texttt{programme.c}, extrait)}, label={lst:programme-c}]
+int factorielle(int n) { ... }          /* produit 2 x 3 x ... x n */
+int pgcd(int a, int b) { ... }          /* algorithme d'Euclide, avec % */
+
+int main(void)
+{
+    int carres[10];
+    int somme = 0;
+    for (int i = 0; i < 10; i++)
+        carres[i] = i * i;
+    for (int i = 0; i < 10; i++)
+        somme += carres[i];                              /* 285 */
+    return somme + factorielle(6) + pgcd(1071, 462);    /* 285 + 720 + 21 */
+}
+\end{lstlisting}
+\end{minipage}\par
+
+\capture{p7-godbolt.png}{Capture de godbolt.org : \texttt{programme.c}, compilateur
+RISC-V (32-bits) gcc (trunk), options \texttt{-O0 -march=rv32im -mabi=ilp32}}
+{Compilation de \texttt{programme.c} sur Compiler Explorer}{fig:p7-godbolt}
+
+\subsection{Assemblage et édition de liens}
+
+Compiler Explorer fournit le code assembleur, mais pas un exécutable adapté à notre
+processeur. Nous avons écrit \texttt{asm\_rv32.py}, qui joue le rôle de l'assembleur et de
+l'éditeur de liens. En deux passes, il calcule l'adresse des étiquettes puis code chaque
+instruction ; il comprend les noms de registres de l'ABI (\texttt{sp}, \texttt{a0}...) et
+les pseudo-instructions de \texttt{gcc} (\texttt{li}, \texttt{mv}, \texttt{j}, \texttt{ble},
+\texttt{call}...). Le fichier \texttt{crt0.s} (code~\ref{lst:crt0}) est placé à l'adresse 0,
+avant le code compilé.
+
+\noindent\begin{minipage}{\linewidth}
+\begin{lstlisting}[style=code, caption={Code de démarrage \texttt{crt0.s}}, label={lst:crt0}]
+_start:
+    li     sp, 0x4000      # stack at the top of the quadram: 4 x 1024 words = 16 KB
+    call   main            # main(); the result is returned in a0
+    ebreak                 # stop: the processor is halted
+\end{lstlisting}
+\end{minipage}\par
+
+Pour vérifier l'assembleur, nous avons aussi demandé à Compiler Explorer le code objet du
+programme. Les 104 mots que nous produisons sont identiques à ceux du compilateur, sauf
+les deux \texttt{jalr} des appels de fonctions : le compilateur y laisse un déplacement nul,
+que l'éditeur de liens doit compléter, alors que \texttt{asm\_rv32.py} calcule le
+déplacement réel. Le fichier final, \texttt{programme.txt}, compte 108 mots : 4 pour le
+démarrage, 104 pour le programme.
+
+\subsection{Modifications du processeur}
+
+Le processeur \texttt{riscvproc\_rv32.v} reprend la machine à états de la
+partie~\ref{sec:fpga}, avec les changements suivants :
+\begin{itemize}
+\item \texttt{pc} est une adresse d'octet qui avance de 4, et la ROM est lue avec
+\texttt{pc[11:2]} ; l'adresse envoyée à \texttt{quadram} est l'adresse d'octet divisée par 4
+(bits 13 à 2), ce qui donne toujours un mot de 12 bits ;
+\item les instructions ajoutées sont celles du tableau~\ref{tab:rv32i-ajout} ;
+\item \texttt{ecall} arrête le processeur comme \texttt{ebreak}.
+\end{itemize}
+Le décalage arithmétique est calculé à part, pour la raison vue à la
+section~\ref{sec:rv32im-impl} : dans un opérateur \texttt{? :} dont une branche est non signée,
+\lstinline[style=vlinline]|$signed(a) >>> n| deviendrait un décalage logique.
+
+\begin{table}[H]
+\centering
+\begin{tabular}{ll}
+\toprule
+Format & Instructions ajoutées \\
+\midrule
+U & \texttt{lui}, \texttt{auipc} \\
+J & \texttt{jal} \\
+I & \texttt{jalr}, \texttt{slti}, \texttt{sltiu}, \texttt{xori}, \texttt{slli}, \texttt{srli}, \texttt{srai} \\
+B & \texttt{beq}, \texttt{bne}, \texttt{blt}, \texttt{bge}, \texttt{bltu}, \texttt{bgeu} \\
+R & \texttt{slt}, \texttt{sltu}, \texttt{xor}, \texttt{sra}, \texttt{or}, \texttt{and} \\
+\bottomrule
+\end{tabular}
+\caption{Instructions ajoutées au processeur pour le compilateur}
+\label{tab:rv32i-ajout}
+\end{table}
+
+Deux limites restent. \texttt{quadram} n'écrit que des mots entiers : les accès à un octet
+ou à un demi-mot (\texttt{lb}, \texttt{sb}, \texttt{lh}, \texttt{sh}...), utilisés pour les
+types \texttt{char} et \texttt{short}, sont refusés et signalés par la sortie
+\texttt{illegal}. Par ailleurs, les variables globales initialisées devraient être recopiées
+de la ROM vers \texttt{quadram} par le code de démarrage, ce que notre \texttt{crt0.s} ne
+fait pas.
+
+\subsection{Validation}
+
+En simulation (figure~\ref{fig:p7-programme}), le programme compilé s'arrête sur
+\texttt{ebreak} après 9\,910~ns, soit environ 990 périodes, avec \texttt{a0} = 1026
+($285 + 720 + 21$). Le pointeur de pile est revenu à \texttt{0x4000} et \texttt{ra} vaut 12,
+l'adresse de retour de l'appel à \texttt{main}. Aucune instruction n'a été refusée.
+
+Le programme C n'utilise qu'une partie des instructions ajoutées. Le programme assembleur
+\texttt{test\_rv32i.s} vérifie les autres en huit étapes : \texttt{lui}, \texttt{auipc},
+comparaisons signées et non signées, opérations logiques, décalages logiques et
+arithmétiques, branchements signés et non signés, appel et retour de fonction, et deux mots
+écrits à 4 octets d'écart. Il se termine avec \texttt{a0} = 0, ce qui signifie que toutes
+les vérifications sont passées (figure~\ref{fig:p7-test}).
+
+\capture{p7-programme.png}{Transcript ModelSim, dossier \texttt{exo/p7},
+\texttt{systeme\_rv32\_tb} avec \texttt{programme.txt} : registres à la fin}
+{Exécution du programme C compilé : \texttt{a0} = 1026}{fig:p7-programme}
+
+\capture{p7-test.png}{Transcript ModelSim, dossier \texttt{exo/p7},
+\texttt{systeme\_rv32\_tb} avec \texttt{test\_rv32i.txt}}
+{Programme de vérification des instructions ajoutées : \texttt{a0} = 0}{fig:p7-test}
+
+Le processeur reste synthétisable. Compilé pour la même carte, avec le même affichage, il
+utilise 6\,631 éléments logiques (64~\%), 20 blocs M9K (43~\%) et 8 multiplieurs ; sa
+fréquence maximale est de 5,53~MHz, et il fonctionne lui aussi à 3,125~MHz. Sur la carte, les
+afficheurs montrent 1026 ; KEY0 et KEY1 affichent \texttt{sp} = 16384 (\texttt{0x4000}) et
+\texttt{ra} = 12, et RESET remet les registres à 0 (figure~\ref{fig:p7-carte}). Le code
+produit par \texttt{gcc} s'exécute donc sur notre processeur.
+
+\begin{figure}[H]
+\centering
+\photo[0.48\linewidth]{p7_1026.jpg}{sans touche : \texttt{a0} = 1026}\hfill
+\photo[0.48\linewidth]{p7_16384.jpg}{KEY0 : \texttt{sp} = 16384}\\[3mm]
+\photo[0.48\linewidth]{p7_12.jpg}{KEY1 : \texttt{ra} = 12}\hfill
+\photo[0.48\linewidth]{p7_0.jpg}{RESET enfoncé : 0}
+\caption{Le programme C exécuté sur la carte}
+\label{fig:p7-carte}
+\end{figure}

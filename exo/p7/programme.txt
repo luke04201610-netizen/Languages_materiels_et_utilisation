@@ -1,0 +1,150 @@
+// program at address 0x0 (byte addresses, one word = 4 bytes)
+@0
+// _start: (0x0)
+00004137 // li sp, 0x4000
+00000097 // call main
+0d0080e7 //   (suite)
+00100073 // ebreak
+// .Ltext0: (0x10)
+// factorielle: (0x10)
+// .LFB0: (0x10)
+fd010113 // addi sp,sp,-48
+02112623 // sw ra,44(sp)
+02812423 // sw s0,40(sp)
+03010413 // addi s0,sp,48
+fca42e23 // sw a0,-36(s0)
+00100793 // li a5,1
+fef42623 // sw a5,-20(s0)
+// .LBB2: (0x2c)
+00200793 // li a5,2
+fef42423 // sw a5,-24(s0)
+0200006f // j .L2
+// .L3: (0x38)
+fec42703 // lw a4,-20(s0)
+fe842783 // lw a5,-24(s0)
+02f707b3 // mul a5,a4,a5
+fef42623 // sw a5,-20(s0)
+fe842783 // lw a5,-24(s0)
+00178793 // addi a5,a5,1
+fef42423 // sw a5,-24(s0)
+// .L2: (0x54)
+fe842703 // lw a4,-24(s0)
+fdc42783 // lw a5,-36(s0)
+fce7dee3 // ble a4,a5,.L3
+// .LBE2: (0x60)
+fec42783 // lw a5,-20(s0)
+00078513 // mv a0,a5
+02c12083 // lw ra,44(sp)
+02812403 // lw s0,40(sp)
+03010113 // addi sp,sp,48
+00008067 // jr ra
+// .LFE0: (0x78)
+// pgcd: (0x78)
+// .LFB1: (0x78)
+fd010113 // addi sp,sp,-48
+02112623 // sw ra,44(sp)
+02812423 // sw s0,40(sp)
+03010413 // addi s0,sp,48
+fca42e23 // sw a0,-36(s0)
+fcb42c23 // sw a1,-40(s0)
+0240006f // j .L6
+// .L7: (0x94)
+// .LBB3: (0x94)
+fdc42703 // lw a4,-36(s0)
+fd842783 // lw a5,-40(s0)
+02f767b3 // rem a5,a4,a5
+fef42623 // sw a5,-20(s0)
+fd842783 // lw a5,-40(s0)
+fcf42e23 // sw a5,-36(s0)
+fec42783 // lw a5,-20(s0)
+fcf42c23 // sw a5,-40(s0)
+// .L6: (0xb4)
+// .LBE3: (0xb4)
+fd842783 // lw a5,-40(s0)
+fc079ee3 // bne a5,zero,.L7
+fdc42783 // lw a5,-36(s0)
+00078513 // mv a0,a5
+02c12083 // lw ra,44(sp)
+02812403 // lw s0,40(sp)
+03010113 // addi sp,sp,48
+00008067 // jr ra
+// .LFE1: (0xd4)
+// main: (0xd4)
+// .LFB2: (0xd4)
+fb010113 // addi sp,sp,-80
+04112623 // sw ra,76(sp)
+04812423 // sw s0,72(sp)
+04912223 // sw s1,68(sp)
+05010413 // addi s0,sp,80
+fe042623 // sw zero,-20(s0)
+// .LBB4: (0xec)
+fe042423 // sw zero,-24(s0)
+02c0006f // j .L10
+// .L11: (0xf4)
+fe842783 // lw a5,-24(s0)
+02f78733 // mul a4,a5,a5
+fe842683 // lw a3,-24(s0)
+fbc40793 // addi a5,s0,-68
+00269693 // slli a3,a3,2
+00f687b3 // add a5,a3,a5
+00e7a023 // sw a4,0(a5)
+fe842783 // lw a5,-24(s0)
+00178793 // addi a5,a5,1
+fef42423 // sw a5,-24(s0)
+// .L10: (0x11c)
+fe842703 // lw a4,-24(s0)
+00900793 // li a5,9
+fce7d8e3 // ble a4,a5,.L11
+// .LBE4: (0x128)
+// .LBB5: (0x128)
+fe042223 // sw zero,-28(s0)
+0300006f // j .L12
+// .L13: (0x130)
+fe442703 // lw a4,-28(s0)
+fbc40793 // addi a5,s0,-68
+00271713 // slli a4,a4,2
+00f707b3 // add a5,a4,a5
+0007a783 // lw a5,0(a5)
+fec42703 // lw a4,-20(s0)
+00f707b3 // add a5,a4,a5
+fef42623 // sw a5,-20(s0)
+fe442783 // lw a5,-28(s0)
+00178793 // addi a5,a5,1
+fef42223 // sw a5,-28(s0)
+// .L12: (0x15c)
+fe442703 // lw a4,-28(s0)
+00900793 // li a5,9
+fce7d6e3 // ble a4,a5,.L13
+// .LBE5: (0x168)
+00600513 // li a0,6
+00000097 // call factorielle
+ea4080e7 //   (suite)
+00050713 // mv a4,a0
+fec42783 // lw a5,-20(s0)
+00f704b3 // add s1,a4,a5
+1ce00593 // li a1,462
+42f00513 // li a0,1071
+00000097 // call pgcd
+ef0080e7 //   (suite)
+00050793 // mv a5,a0
+00f487b3 // add a5,s1,a5
+00078513 // mv a0,a5
+04c12083 // lw ra,76(sp)
+04812403 // lw s0,72(sp)
+04412483 // lw s1,68(sp)
+05010113 // addi sp,sp,80
+00008067 // jr ra
+// .LFE2: (0x1b0)
+// .Letext0: (0x1b0)
+// .Ldebug_info0: (0x1b0)
+// .Ldebug_abbrev0: (0x1b0)
+// .Ldebug_line0: (0x1b0)
+// .LASF3: (0x1b0)
+// .LASF4: (0x1b0)
+// .LASF7: (0x1b0)
+// .LASF8: (0x1b0)
+// .LASF6: (0x1b0)
+// .LASF5: (0x1b0)
+// .LASF2: (0x1b0)
+// .LASF0: (0x1b0)
+// .LASF1: (0x1b0)

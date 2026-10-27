@@ -16,13 +16,12 @@ données vers une mémoire externe oblige à revoir leur initialisation.
 Les tests de validation du processeur corrigé et du système donnent les résultats attendus.
 La vérification finale reproduit également les défauts du modèle d'origine et l'échec du
 premier programme lorsque les données externes ne sont pas initialisées. Cette validation
-reste celle des cas testés : le processeur implémente un sous-ensemble de RV32I et les huit
-instructions de l'extension M, et non toute l'ISA RV32IM.
+reste celle des cas testés : le processeur des parties 4 et 5 n'implémente qu'un
+sous-ensemble de RV32I et les huit instructions de l'extension M.
 
-Pour aller jusqu'à une implantation sur FPGA, il faudrait remplacer les attentes
-comportementales par une machine à états synchrone, utiliser une sélection de données
-adaptée aux ressources internes de la cible, puis vérifier la synthèse, les contraintes
-d'horloge et le fonctionnement sur carte. Pour exécuter du code issu d'un compilateur C
-RISC-V, il faudrait compléter les instructions, passer à l'adressage par octets et prévoir
-le démarrage du programme, la pile et la répartition des mémoires. Ces deux prolongements
-n'ont pas été réalisés.
+Les deux parties optionnelles ont été réalisées. Réécrit en machine à états synchrone, le
+processeur devient synthétisable : le système complet, avec les quatre RAM dans les blocs
+mémoire du FPGA, fonctionne sur une carte Intel Cyclone IV E à 3,125~MHz. Passé ensuite à
+l'adressage par octets et complété par les instructions de RV32I manquantes, ce même
+processeur exécute un programme C compilé par \texttt{gcc} sur Compiler Explorer. Il reste
+limité aux accès à des mots entiers et ne gère pas les variables globales initialisées.

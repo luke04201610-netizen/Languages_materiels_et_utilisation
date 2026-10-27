@@ -1,0 +1,6 @@
+QUARTUS_VERSION = "13.1"
+DATE = "18:00:00  October 27, 2026"
+
+# Revisions
+
+PROJECT_REVISION = "top_rv32"

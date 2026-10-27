@@ -1,0 +1,17 @@
+// instructions at address 0x0
+@0
+ff900093 // addi x1, x0, -7
+06400113 // addi x2, x0, 100
+401101b3 // sub x3, x2, x1
+ff00f213 // andi x4, x1, -16
+fff06293 // ori x5, x0, -1
+00300313 // addi x6, x0, 3
+006113b3 // sll x7, x2, x6
+0062d433 // srl x8, x5, x6
+00312223 // sw x3, 4(x2)
+fe112e23 // sw x1, -4(x2)
+00412483 // lw x9, 4(x2)
+ffc12503 // lw x10, -4(x2)
+00500013 // addi x0, x0, 5
+000005b3 // add x11, x0, x0
+00100073 // ebreak

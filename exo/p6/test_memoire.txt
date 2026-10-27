@@ -1,0 +1,25 @@
+// instructions at address 0x0
+@0
+40000293 // addi x5, x0, 1024
+00528333 // add x6, x5, x5
+005303b3 // add x7, x6, x5
+00b00513 // addi x10, x0, 11
+01600593 // addi x11, x0, 22
+02100613 // addi x12, x0, 33
+02c00693 // addi x13, x0, 44
+00a022a3 // sw x10, 5(x0)
+00b2a2a3 // sw x11, 5(x5)
+00c322a3 // sw x12, 5(x6)
+00d3a2a3 // sw x13, 5(x7)
+00502a03 // lw x20, 5(x0)
+0052aa83 // lw x21, 5(x5)
+00532b03 // lw x22, 5(x6)
+0053ab83 // lw x23, 5(x7)
+015a0c33 // add x24, x20, x21
+016c0c33 // add x24, x24, x22
+017c0c33 // add x24, x24, x23
+00a38413 // addi x8, x7, 10
+ffb42c83 // lw x25, -5(x8)
+ff82afa3 // sw x24, -1(x5)
+3ff02d03 // lw x26, 1023(x0)
+00100073 // ebreak
