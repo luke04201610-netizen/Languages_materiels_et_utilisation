@@ -42,38 +42,75 @@ end
 \end{lstlisting}
 \end{minipage}\par
 
-Nous avons ajouté l'option \texttt{+prog=chemin} pour pouvoir changer de programme sans
-recompiler le processeur. Le code~\ref{lst:readmemh} correspond à la variante de validation ;
-\texttt{instr2.txt} est sélectionné par cette option. Le premier fichier \texttt{instr.txt}
-contient aussi des données préchargées, ce qui sera important lors du passage à la mémoire
-externe (section~\ref{sec:instr}).
+Nous avons ajouté l'option \texttt{+prog} pour changer de programme sans recompiler le
+processeur. Sans cette option, le processeur du code~\ref{lst:readmemh} charge
+\texttt{test\_base.txt} ; la commande \texttt{vsim work.system +prog=instr.txt} lui fait charger
+\texttt{instr.txt}.
 
-Le tableau~\ref{tab:instr2} décode le programme \texttt{instr2.txt} fourni sur Madoc. Avec le
-modèle d'origine, les registres sont corrects à la fin du programme (x1 = 1, x2 = 6), mais
-l'instruction \texttt{sw} n'écrit pas au mot 65 : elle écrit au mot 0 et écrase la première
-instruction du programme (\texttt{memory[0]} vaut 6 et \texttt{memory[65]} reste à \texttt{X}).
-C'est cette erreur qui nous a conduits aux corrections de la section~\ref{sec:corrections}.
+Le programme de test fourni sur Madoc, \texttt{instr.txt}, contient six instructions suivies
+de deux données, 2 et 4, que la directive \texttt{@40} place aux mots 64 et 65 (40 en
+hexadécimal). Le tableau~\ref{tab:instr} le décode : à la fin du programme, on attend x1 = 1,
+x2 = 6 et la valeur 6 au mot 65.
 
 \begin{table}[H]
 \centering
 \begin{tabular}{clll}
 \toprule
-Adresse & Code & Instruction & Effet \\
+Mot & Contenu & Instruction & Effet attendu \\
 \midrule
-0 & \texttt{00200093} & \texttt{addi x1, x0, 2} & x1 = 2 \\
-1 & \texttt{00400113} & \texttt{addi x2, x0, 4} & x2 = 4 \\
-2 & \texttt{00110133} & \texttt{add x2, x2, x1} & x2 = 6 \\
-3 & \texttt{001150b3} & \texttt{srl x1, x2, x1} & x1 = 6 décalé de 2 bits = 1 \\
-4 & \texttt{0420a023} & \texttt{sw x2, 64(x1)} & le mot 64 + x1 = 65 reçoit 6 \\
-5 & \texttt{00100073} & \texttt{ebreak} & fin de la simulation \\
+0  & \texttt{04002083} & \texttt{lw x1, 64(x0)}  & x1 = mot 64 = 2 \\
+1  & \texttt{04102103} & \texttt{lw x2, 65(x0)}  & x2 = mot 65 = 4 \\
+2  & \texttt{00110133} & \texttt{add x2, x2, x1} & x2 = 6 \\
+3  & \texttt{001150b3} & \texttt{srl x1, x2, x1} & x1 = 6 décalé de 2 bits = 1 \\
+4  & \texttt{0420a023} & \texttt{sw x2, 64(x1)}  & le mot 64 + x1 = 65 reçoit 6 \\
+5  & \texttt{00100073} & \texttt{ebreak}         & fin de la simulation \\
+\midrule
+64 & \texttt{00000002} & donnée & \\
+65 & \texttt{00000004} & donnée & \\
 \bottomrule
 \end{tabular}
-\caption{Programme \texttt{instr2.txt}}
-\label{tab:instr2}
+\caption{Programme \texttt{instr.txt}}
+\label{tab:instr}
 \end{table}
 
+Avec le modèle d'origine, aucun de ces résultats n'est obtenu (tableau~\ref{tab:instr-res} et
+figure~\ref{fig:instr}).
+Les deux \texttt{lw} lisent le mot 0, c'est-à-dire la première instruction
+(\texttt{04002083}), au lieu des mots 64 et 65. L'addition et le décalage portent donc sur ce
+code : x2 = \texttt{08004106}, puis x1 = \texttt{01000820}, car le décalage vaut les 5 bits
+de poids faible de x1, soit 3. Enfin, \texttt{sw} écrit lui aussi au mot 0 : il écrase la
+première instruction du programme, et le mot 65 garde sa valeur initiale, 4. Cette erreur
+d'adresse, ainsi que celles révélées par le programme \texttt{test\_base}, nous ont conduits
+aux corrections de la section~\ref{sec:corrections}. Après ces corrections, \texttt{instr.txt}
+donne les valeurs attendues et la simulation se termine à 70~ns.
+
+\begin{table}[H]
+\centering
+\begin{tabular}{lrrr}
+\toprule
+ & Attendu & Modèle d'origine & Après correction \\
+\midrule
+x1      & 1                 & 16779296 (\texttt{01000820})  & 1 \\
+x2      & 6                 & 134234374 (\texttt{08004106}) & 6 \\
+mot 0   & \texttt{04002083} & \texttt{08004106}             & \texttt{04002083} \\
+mot 65  & 6                 & 4                             & 6 \\
+\bottomrule
+\end{tabular}
+\caption{Résultats de \texttt{instr.txt} avant et après correction du modèle}
+\label{tab:instr-res}
+\end{table}
+
+% figure flottante : en [H] elle laissait un blanc de 7 cm en bas de page
+\begin{figure}[tbp]
+\centering
+\includegraphics[width=0.98\linewidth]{figures/p4-instr.png}
+\caption{Transcript ModelSim : \texttt{instr.txt} avec le modèle d'origine, puis avec le modèle
+corrigé}
+\label{fig:instr}
+\end{figure}
+
 % ---------------------------------------------------------------------------
-\subsection{Manipuler les instructions RISC-V}
+\subsection{Manipuler les instructions RISC-V (\S\,4.1.1 du sujet)}
 \label{sec:codage}
 
 Les instructions RV32I et de l'extension M utilisées ici sont codées sur 32 bits.
@@ -122,7 +159,7 @@ funct7 & rs2 = x21 & rs1 = x20 & funct3 & rd = x9 & opcode \\
 \end{table}
 
 % ---------------------------------------------------------------------------
-\subsection{Adapter et implémenter les instructions RISC-V}
+\subsection{Adapter et implémenter les instructions RISC-V (\S\,4.1.2 du sujet)}
 \label{sec:adapter}
 
 \subsubsection{Modes d'adressage}
@@ -364,11 +401,16 @@ reg[63:0] prod;   // 64-bit product for MULH, MULHSU, MULHU
 \end{lstlisting}
 \end{minipage}\par
 
-Le programme \texttt{test\_rv32im} teste les huit instructions et les trois cas particuliers
-(tableau~\ref{tab:rv32imres} et figure~\ref{fig:rv32im}). Avant la modification, le processeur affichait onze fois
-\og erreur : mauvaise instruction arithmétique\fg{} (une fois par instruction de l'extension M)
-et les registres correspondants restaient à 0 ; après la modification, toutes les valeurs sont
-celles attendues.
+Le programme \texttt{test\_rv32im} teste les huit instructions et les trois cas particuliers.
+Avant la modification, le processeur affichait onze fois \og erreur : mauvaise instruction
+arithmétique\fg{}, une fois par instruction de l'extension M, et les registres correspondants
+restaient à 0 (figure~\ref{fig:rv32im-avant}). Après la modification, toutes les valeurs sont
+celles attendues (tableau~\ref{tab:rv32imres} et figure~\ref{fig:rv32im}).
+
+\capture[0.82\linewidth]{p4-rv32im-avant.png}{Transcript ModelSim, dossier \texttt{exo/p4\_q1} :
+\texttt{test\_rv32im} avant l'ajout de l'extension M}
+{Transcript ModelSim : \texttt{test\_rv32im} avant l'ajout de l'extension M (le transcript
+affiche mal l'accent de \og arithmétique\fg{})}{fig:rv32im-avant}
 
 \begin{table}[H]
 \centering
@@ -398,7 +440,7 @@ Instruction & Registre & Résultat & Remarque \\
 {Transcript ModelSim : registres après \texttt{test\_rv32im}}{fig:rv32im}
 
 % ---------------------------------------------------------------------------
-\subsection{Adapter la micro-architecture du processeur RISC-V}
+\subsection{Adapter la micro-architecture du processeur RISC-V (\S\,4.2 du sujet)}
 \label{sec:microarchi}
 
 Pour pouvoir relier le processeur au bloc \texttt{quadram}, le module \texttt{system}, qui
@@ -475,11 +517,16 @@ Le testbench \texttt{tb\_riscvproc.sv} instancie le processeur, génère une hor
 Sur la figure~\ref{fig:horloge}, les curseurs marquent la fin du reset (12~ns), la première
 instruction (20~ns) et la fin de la simulation (190~ns). Les 170~ns qui séparent la première
 et la dernière des 18 instructions de \texttt{test\_rv32im} représentent 17 périodes : une
-instruction par période. Les résultats sont identiques à ceux de la section précédente : \texttt{test\_rv32im} se termine à 190~ns, \texttt{test\_base} à
-160~ns et \texttt{instr2} à 70~ns. Le premier programme \texttt{instr.txt} se termine
-également à 70~ns et donne x1 = 1, x2 = 6 et \texttt{memory[65]} = 6.
+instruction par période. Les résultats sont identiques à ceux de la section précédente :
+\texttt{test\_rv32im} se termine à 190~ns, \texttt{test\_base} à 160~ns, \texttt{instr.txt} et
+\texttt{instr2.txt} à 70~ns (figure~\ref{fig:horloge-prog}).
 
 \capture{p4-horloge.png}{ModelSim, dossier \texttt{exo/p4\_q3}, programme \texttt{test\_rv32im} :
 signaux \texttt{clock}, \texttt{reset}, \texttt{pc} et \texttt{instr} de 0 à 190~ns}
 {Processeur avec horloge et reset, programme \texttt{test\_rv32im} : une instruction par
 période}{fig:horloge}
+
+\capture[0.85\linewidth]{p4-horloge-programmes.png}{Transcript ModelSim, dossier
+\texttt{exo/p4\_q3} : \texttt{test\_base}, \texttt{instr.txt} puis \texttt{instr2.txt}}
+{Transcript ModelSim : processeur avec horloge, programmes \texttt{test\_base},
+\texttt{instr.txt} puis \texttt{instr2.txt}}{fig:horloge-prog}

@@ -1,7 +1,7 @@
 \section{Récupération d'un modèle de RAM}
 \label{sec:ram}
 
-Le premier bloc à réutiliser est une RAM synchrone fournie avec deux testbenches.
+Le premier bloc à réutiliser est une RAM synchrone fournie avec son testbench.
 Nous avons conservé son fonctionnement, puis adapté les types, les dimensions et la
 sélection pour pouvoir relier plusieurs instances au même bus.
 
@@ -68,9 +68,9 @@ Temps & Résultat observé \\
 
 La sortie initiale indéfinie est attendue : ni la mémoire ni le registre d'adresse ne
 sont initialisés. ModelSim peut aussi signaler à 0~ns une métavaleur lors de la conversion
-de l'adresse en entier. Dans ce modèle, une lecture du mot écrit au même front donne la
-nouvelle donnée après les mises à jour des signaux ; ce comportement décrit ici la
-simulation du code fourni.
+de l'adresse en entier. Enfin, quand un front écrit un mot et mémorise en même temps son
+adresse, la sortie présente directement la nouvelle donnée : l'affectation concurrente de
+sortie est réévaluée après la mise à jour du mot et de l'adresse.
 
 \paragraph{Test en boucle.}
 \texttt{Bench2} utilise le signal booléen \texttt{ok}, qui reste faux dès qu'une comparaison

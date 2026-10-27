@@ -284,13 +284,11 @@ plus.
 \subsection{Différences avec le premier programme}
 \label{sec:instr}
 
-Le fichier \texttt{instr.txt} contient six instructions, puis les données 2 et 4 aux mots
-64 et 65. La directive \texttt{@40} donne l'adresse hexadécimale 40, soit l'indice de mot 64
-utilisé par ce modèle.
-
-Les deux premiers \texttt{lw} chargent ces données dans x1 et x2. Dans \texttt{instr2.txt},
-deux \texttt{addi} fournissent directement les mêmes valeurs ; les quatre instructions
-suivantes restent identiques (tableau~\ref{tab:programmes-comparaison}).
+Le premier programme, \texttt{instr.txt} (section~\ref{sec:validation}), charge ses deux
+opérandes avec deux \texttt{lw} depuis les mots 64 et 65, où \texttt{\$readmemh} a placé les
+données 2 et 4. Dans \texttt{instr2.txt}, deux \texttt{addi} fournissent directement les mêmes
+valeurs ; les quatre instructions suivantes restent identiques
+(tableau~\ref{tab:programmes-comparaison}).
 
 \begin{table}[H]
 \centering
