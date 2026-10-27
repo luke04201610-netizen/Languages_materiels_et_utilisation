@@ -1,7 +1,7 @@
 \section{Prise en main d'un modèle de processeur}
 \label{sec:processeur}
 
-Le processeur fourni sur Madoc (\texttt{riscvproc-2.v}) est un modèle Verilog monocycle qui
+Le processeur fourni sur Madoc (\texttt{riscvproc-2.v}) est un modèle comportemental Verilog qui
 implémente une partie du jeu d'instructions RV32I~\cite{riscvspec} : \texttt{add},
 \texttt{sub}, \texttt{sll}, \texttt{srl}, \texttt{addi}, \texttt{andi}, \texttt{ori},
 \texttt{lw}, \texttt{sw} et \texttt{ebreak}. Il contient une mémoire interne \texttt{memory} de
@@ -28,14 +28,25 @@ fichier n'est pas trouvé, ModelSim l'indique par un avertissement, la mémoire 
 \texttt{X} et le processeur affiche \og erreur : mauvaise valeur dans op-code\fg{} à chaque
 instruction.
 
+\noindent\begin{minipage}{\linewidth}
 \begin{lstlisting}[style=verilog, caption={Chargement du programme dans la mémoire du processeur}, label={lst:readmemh}]
+string progfile;
 initial begin
-  $readmemh("instr2.txt", memory);
+  if (!$value$plusargs("prog=%s", progfile))
+    progfile = "test_base.txt";
+  $readmemh(progfile, memory);
   // initialize program counter to 0
   pc = 0;
   ...
 end
 \end{lstlisting}
+\end{minipage}\par
+
+Nous avons ajouté l'option \texttt{+prog=chemin} pour pouvoir changer de programme sans
+recompiler le processeur. Le code~\ref{lst:readmemh} correspond à la variante de validation ;
+\texttt{instr2.txt} est sélectionné par cette option. Le premier fichier \texttt{instr.txt}
+contient aussi des données préchargées, ce qui sera important lors du passage à la mémoire
+externe (section~\ref{sec:instr}).
 
 Le tableau~\ref{tab:instr2} décode le programme \texttt{instr2.txt} fourni sur Madoc. Avec le
 modèle d'origine, les registres sont corrects à la fin du programme (x1 = 1, x2 = 6), mais
@@ -65,7 +76,9 @@ Adresse & Code & Instruction & Effet \\
 \subsection{Manipuler les instructions RISC-V}
 \label{sec:codage}
 
-Toutes les instructions RISC-V font 32 bits. Le modèle utilise trois formats
+Les instructions RV32I et de l'extension M utilisées ici sont codées sur 32 bits.
+Le projet n'utilise pas l'extension C, qui introduit des instructions de 16 bits.
+Le modèle utilise trois formats
 (tableau~\ref{tab:formats}) : le format R pour les opérations entre registres, le format I pour
 les opérations avec un immédiat de 12 bits et pour \texttt{lw}, et le format S pour
 \texttt{sw}, dont l'immédiat est découpé en deux champs afin que \texttt{rs1} et \texttt{rs2}
@@ -125,8 +138,8 @@ Mode & Principe & Exemples \\
 \midrule
 Immédiat & L'opérande est une constante codée dans l'instruction elle-même. & \texttt{addi x1, x0, -7} \\
 \addlinespace
-Direct & L'instruction désigne directement l'emplacement de l'opérande : un registre, ou une
-adresse mémoire fixe. & \makecell[tl]{\texttt{add x9, x20, x21}\\ \texttt{lw x1, 64(x0)}} \\
+Direct & L'adresse mémoire de l'opérande est fixée dans l'instruction ; ici, la base
+\texttt{x0} vaut 0. & \texttt{lw x1, 64(x0)} \\
 \addlinespace
 Indirect & Un registre contient l'adresse de l'opérande en mémoire (pointeur). &
 \makecell[tl]{\texttt{lw x1, 0(x2)}\\ \texttt{sw x3, 4(x2)}} \\
@@ -154,6 +167,7 @@ et le registre \texttt{x0}, nous avons écrit le programme \texttt{test\_base}
 dans ModelSim avec la commande \texttt{examine} (figure~\ref{fig:testbase}) : le modèle d'origine
 présente trois erreurs.
 
+\noindent\begin{minipage}{\linewidth}
 \begin{lstlisting}[style=code, caption={Programme de test \texttt{test\_base.s}}, label={lst:testbase}]
 addi x1, x0, -7      # x1 = -7
 addi x2, x0, 100     # x2 = 100
@@ -171,6 +185,7 @@ addi x0, x0, 5       # x0 doit rester a 0
 add  x11, x0, x0     # x11 = 0
 ebreak
 \end{lstlisting}
+\end{minipage}\par
 
 \begin{table}[H]
 \centering
@@ -230,6 +245,7 @@ mot 0 égal à 4089). Le décalage de 12 bits est de toute façon faux : il corr
 \texttt{addi x0, x0, 5} modifiait \texttt{x0}, qui doit toujours valoir 0 (spécification,
 chapitre 2.1). Nous remettons \texttt{regs[0]} à 0 à la fin de chaque instruction.
 
+\noindent\begin{minipage}{\linewidth}
 \begin{lstlisting}[style=verilog, caption={Corrections du modèle (immédiats, adresses, x0)}, label={lst:corrections}]
 `define I_IMM   {{20{instr[31]}}, instr[31:20]}               // I-type immediate
 `define S_IMM   {{20{instr[31]}}, instr[31:25], instr[11:7]}  // S-type immediate
@@ -246,8 +262,9 @@ end
 ...
 regs[0] = 0;   // x0 is hardwired to 0
 \end{lstlisting}
+\end{minipage}\par
 
-\subsubsection{Du jeu RV32I au jeu RV32IM}
+\subsubsection{Ajout des instructions de l'extension M}
 \label{sec:rv32im}
 
 L'extension M ajoute huit instructions de multiplication et de division entières
@@ -311,11 +328,14 @@ Nous avons ajouté les huit codes sous la même forme que les instructions exist
 opérations entre registres (code~\ref{lst:rv32m}). Trois points de Verilog demandent de
 l'attention :
 \begin{itemize}
-\item \textbf{Largeur des expressions.} Verilog calcule une expression sur la largeur de son plus
-grand opérande ou de sa destination. Avec des registres de 32 bits, le produit serait tronqué à
-32 bits et la partie haute perdue. Les opérandes sont donc étendus à 64 bits dans la variable
-\texttt{prod} : extension de signe \lstinline[style=vlinline]|{{32{x[31]}}, x}| pour un opérande
-signé, zéros \lstinline[style=vlinline]|{32'b0, x}| pour un opérande non signé.
+\item \textbf{Largeur et extension des opérandes.} Dans une affectation directe telle que
+\texttt{prod = a * b}, une destination de 64 bits participe au calcul de la largeur de
+l'expression : deux opérandes de 32 bits ne provoquent donc pas à eux seuls une troncature
+à 32 bits~\cite{systemverilog}. Nos concaténations rendent surtout explicite l'extension
+voulue pour chaque opérande : copie du signe avec
+\lstinline[style=vlinline]|{{32{x[31]}}, x}| ou ajout de zéros avec
+\lstinline[style=vlinline]|{32'b0, x}|. Le produit est conservé sur 64 bits dans
+\texttt{prod}, puis les bits 63 à 32 sont copiés pour les variantes \texttt{MULH}.
 \item \textbf{Division signée.} Les deux opérandes passent par \texttt{\$signed}. La division
 signée de Verilog arrondit vers zéro et le reste prend le signe du dividende, comme en RISC-V.
 \item \textbf{Cas particuliers.} En Verilog, une division par zéro donne \texttt{X} ; ces cas sont
@@ -325,6 +345,7 @@ conditionnel \texttt{? :} : si l'une de ses branches est non signée (par exempl
 est alors calculée en non signé ($-7 / 2$ donne 2147483644 au lieu de $-3$).
 \end{itemize}
 
+\noindent\begin{minipage}{\linewidth}
 \begin{lstlisting}[style=verilog, caption={Extrait de l'implémentation de l'extension M}, label={lst:rv32m}]
 reg[63:0] prod;   // 64-bit product for MULH, MULHSU, MULHU
 ...
@@ -341,6 +362,7 @@ reg[63:0] prod;   // 64-bit product for MULH, MULHSU, MULHU
          else
            regs[`RD] = $signed(regs[`RS1]) / $signed(regs[`RS2]);
 \end{lstlisting}
+\end{minipage}\par
 
 Le programme \texttt{test\_rv32im} teste les huit instructions et les trois cas particuliers
 (tableau~\ref{tab:rv32imres} et figure~\ref{fig:rv32im}). Avant la modification, le processeur affichait onze fois
@@ -376,7 +398,7 @@ Instruction & Registre & Résultat & Remarque \\
 {Transcript ModelSim : registres après \texttt{test\_rv32im}}{fig:rv32im}
 
 % ---------------------------------------------------------------------------
-\subsection{Adapter la µ-architecture du processeur RISC-V}
+\subsection{Adapter la micro-architecture du processeur RISC-V}
 \label{sec:microarchi}
 
 Pour pouvoir relier le processeur au bloc \texttt{quadram}, le module \texttt{system}, qui
@@ -424,6 +446,7 @@ attendent la mémoire alors que \texttt{instr} doit rester stable.
 mémoire interne.
 \end{itemize}
 
+\noindent\begin{minipage}{\linewidth}
 \begin{lstlisting}[style=verilog, caption={Boucle principale du processeur avec horloge et reset}, label={lst:horloge}]
 always begin // one instruction per clock period
   @(negedge clock);
@@ -444,6 +467,7 @@ always begin // one instruction per clock period
   end // if (reset) ... else
 end
 \end{lstlisting}
+\end{minipage}\par
 
 Le testbench \texttt{tb\_riscvproc.sv} instancie le processeur, génère une horloge de période
 10~ns et maintient le reset à 1 jusqu'à 12~ns, ce qui laisse un front descendant de reset à
@@ -451,9 +475,9 @@ Le testbench \texttt{tb\_riscvproc.sv} instancie le processeur, génère une hor
 Sur la figure~\ref{fig:horloge}, les curseurs marquent la fin du reset (12~ns), la première
 instruction (20~ns) et la fin de la simulation (190~ns). Les 170~ns qui séparent la première
 et la dernière des 18 instructions de \texttt{test\_rv32im} représentent 17 périodes : une
-instruction par période. Les résultats sont identiques à ceux de la section précédente pour
-les trois programmes : \texttt{test\_rv32im} se termine à 190~ns, \texttt{test\_base} à
-160~ns et \texttt{instr2} à 70~ns.
+instruction par période. Les résultats sont identiques à ceux de la section précédente : \texttt{test\_rv32im} se termine à 190~ns, \texttt{test\_base} à
+160~ns et \texttt{instr2} à 70~ns. Le premier programme \texttt{instr.txt} se termine
+également à 70~ns et donne x1 = 1, x2 = 6 et \texttt{memory[65]} = 6.
 
 \capture{p4-horloge.png}{ModelSim, dossier \texttt{exo/p4\_q3}, programme \texttt{test\_rv32im} :
 signaux \texttt{clock}, \texttt{reset}, \texttt{pc} et \texttt{instr} de 0 à 190~ns}

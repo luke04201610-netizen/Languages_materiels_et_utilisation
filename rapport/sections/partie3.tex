@@ -1,6 +1,196 @@
 \section{Réutilisation du bloc Sync\_Ram}
 \label{sec:quadram}
 
-\acompleter{décodeur d'adresses et sa simulation ; bloc \texttt{quadram} (4 instances de
-\texttt{Sync\_Ram} et le décodeur) ; validation ; version générique avec
-\texttt{for ... generate} (\texttt{Nbits\_sel}, \texttt{Nbits\_addr}, \texttt{Nbits\_data}).}
+Nous avons ensuite construit \texttt{quadram}, un bloc qui réunit quatre instances de
+\texttt{Sync\_Ram} derrière un décodeur. Les RAM partagent les entrées et le bus de sortie ;
+le décodeur doit donc sélectionner une seule instance à partir de l'adresse globale.
+
+\subsection{Décodeur d'adresses}
+
+Pour quatre RAM, deux bits de sélection suffisent. Nous avons utilisé une affectation
+\texttt{with ... select} pour produire le code à un seul bit actif du
+tableau~\ref{tab:decodeur}. Le décodeur est combinatoire : il n'a ni horloge ni état interne.
+
+\begin{table}[H]
+\centering
+\begin{tabular}{cll}
+\toprule
+Entrée \texttt{data\_in} & Sortie \texttt{cs\_out(3 downto 0)} & RAM sélectionnée \\
+\midrule
+\texttt{00} & \texttt{0001} & RAM 0 \\
+\texttt{01} & \texttt{0010} & RAM 1 \\
+\texttt{10} & \texttt{0100} & RAM 2 \\
+\texttt{11} & \texttt{1000} & RAM 3 \\
+autres valeurs & \texttt{0000} & aucune \\
+\bottomrule
+\end{tabular}
+\caption{Décodage des deux bits de sélection}
+\label{tab:decodeur}
+\end{table}
+
+Le cas \texttt{when others} est nécessaire car les bits peuvent notamment prendre les
+valeurs indéfinies \texttt{U} ou \texttt{X}. Une adresse indéterminée ne doit pas activer
+une RAM. Le testbench applique successivement \texttt{00}, \texttt{01}, \texttt{10},
+\texttt{11}, puis \texttt{XX}, pendant 10~ns chacun, et vérifie les sorties par assertions.
+Le chronogramme (figure~\ref{fig:decodeur}) reproduit le tableau ; après 40~ns, l'entrée
+\texttt{XX} donne bien \texttt{0000}. Les vérifications se terminent à 50~ns.
+
+\simcapture{p3-decoder.png}{660 644 10 130}{660 154 10 630}
+{Décodeur 2 vers 4 : une sélection par adresse valide et aucune sélection pour XX}
+{fig:decodeur}
+
+\subsection{Assemblage de quatre RAM}
+
+Le fichier \texttt{quadram.vhd} instancie le décodeur et quatre exemplaires du modèle
+\texttt{sync\_ram} avec sélection. Chaque RAM est configurée avec
+\texttt{Nbits\_addr = 8} et \texttt{Nbits\_data = 8}, soit 256 mots de 8 bits. L'ensemble
+contient donc $4\times256=1024$ mots de 8 bits.
+
+L'adresse globale comporte 10 bits. Les bits 9 et 8 sont appliqués au décodeur ; les
+bits 7 à 0 désignent le mot à l'intérieur de la RAM. L'adresse locale, les données à
+écrire, \texttt{we} et l'horloge sont communes aux quatre instances. Seul le signal
+\texttt{cs(i)} est propre à chaque RAM. Le tableau~\ref{tab:quadram-adresses} donne la
+répartition de l'espace d'adressage.
+
+\begin{table}[H]
+\centering
+\begin{tabular}{cll}
+\toprule
+RAM & Bits 9--8 & Adresses globales (hexadécimal) \\
+\midrule
+0 & \texttt{00} & \texttt{000} à \texttt{0FF} \\
+1 & \texttt{01} & \texttt{100} à \texttt{1FF} \\
+2 & \texttt{10} & \texttt{200} à \texttt{2FF} \\
+3 & \texttt{11} & \texttt{300} à \texttt{3FF} \\
+\bottomrule
+\end{tabular}
+\caption{Répartition des adresses entre les quatre RAM de 256 mots}
+\label{tab:quadram-adresses}
+\end{table}
+
+Les sorties sont reliées au même signal \texttt{dataout}. Dans la simulation VHDL, les
+éléments résolus de type \texttt{std\_logic} qui composent les vecteurs \texttt{unsigned}
+permettent cette connexion à plusieurs pilotes. La RAM sélectionnée fournit la donnée,
+les autres fournissent \texttt{Z}. Deux pilotes imposant des valeurs opposées produiraient
+une valeur \texttt{X}, d'où la nécessité de n'activer qu'une seule sortie.
+
+\subsection{Validation de l'ensemble}
+
+Nous avons compilé la RAM corrigée, le décodeur et \texttt{quadram} dans une même
+bibliothèque, puis exécuté \texttt{quadram\_tb.vhd}. Le test écrit quatre valeurs différentes
+au déplacement local 5, puis relit les quatre adresses (tableau~\ref{tab:quadram-test}).
+
+\begin{table}[H]
+\centering
+\begin{tabular}{clll}
+\toprule
+RAM & Adresse globale & Donnée écrite et relue & Sélection \\
+\midrule
+0 & \texttt{005} & \texttt{11} & \texttt{0001} \\
+1 & \texttt{105} & \texttt{22} & \texttt{0010} \\
+2 & \texttt{205} & \texttt{33} & \texttt{0100} \\
+3 & \texttt{305} & \texttt{44} & \texttt{1000} \\
+\bottomrule
+\end{tabular}
+\caption{Test des quatre RAM ; adresses et données en hexadécimal}
+\label{tab:quadram-test}
+\end{table}
+
+La figure~\ref{fig:quadram-test} montre les écritures de 10 à 50~ns puis les lectures de
+50 à 90~ns. Les assertions ne signalent aucune erreur et le message
+\og Fin du test de quadram\fg{} apparaît à 90~ns ; l'horloge s'arrête à 100~ns. Les quatre
+valeurs restent distinctes : une écriture dans une RAM n'a pas écrasé le mot de même
+déplacement dans les autres. Si l'écriture n'était pas conditionnée par \texttt{cs}, les
+quatre mots finiraient tous avec la dernière valeur, \texttt{44}, et les trois premières
+comparaisons échoueraient.
+
+\simcapture{p3-quadram.png}{660 674 10 130}{660 339 10 550}
+{Quadram fixe : écritures puis lectures indépendantes des quatre RAM}
+{fig:quadram-test}
+
+\paragraph{Interprétation du temps de lecture.}
+Dans ce test, le déplacement local reste égal à 5 pendant le passage d'une RAM à l'autre.
+Le changement des bits de sélection modifie donc la sortie dès que le décodeur change
+\texttt{cs} : le mot local 5 est déjà adressé dans chaque RAM. Ce comportement ne signifie
+pas que toute lecture est asynchrone. Si le déplacement change aussi, la sortie peut
+transitoirement présenter la nouvelle RAM à l'ancienne adresse locale, jusqu'au front
+montant suivant. Le processeur devra attendre que cette adresse soit échantillonnée avant
+de capturer la donnée (section~\ref{sec:synchro}).
+
+Ces quatre lectures vérifient la sélection et l'indépendance des blocs au déplacement 5 ;
+elles ne constituent pas un parcours de toutes les adresses de \texttt{quadram}.
+
+\subsection{Généricité du décodeur et de quadram}
+
+Nous avons rendu le décodeur générique avec \texttt{Nbits\_sel}, le nombre de bits de
+sélection. Le décodeur produit $2^{\mathtt{Nbits\_sel}}$ sorties, chacune décrite par une
+affectation générée (code~\ref{lst:decodeur-generique}).
+
+\noindent\begin{minipage}{\linewidth}
+\begin{lstlisting}[style=vhdl, caption={Décodage générique des signaux de sélection}, label={lst:decodeur-generique}]
+GEN_CS: for i in 0 to 2**Nbits_sel-1 generate
+  cs_out(i) <= '1' when data_in = i else '0';
+end generate GEN_CS;
+\end{lstlisting}
+\end{minipage}\par
+
+Le bloc \texttt{quadram} reçoit trois paramètres : \texttt{Nbits\_sel},
+\texttt{Nbits\_addr} et \texttt{Nbits\_data}, notés ici $s$, $a$ et $d$.
+Il contient $N=2^s$ RAM de $2^a$ mots de $d$ bits, soit $2^{s+a}$ mots au total ;
+l'adresse globale a $s+a$ bits. Le nombre de RAM est donc une puissance de deux :
+cette variante ne couvre pas un nombre arbitraire de blocs.
+
+Les instanciations explicites sont remplacées par le code~\ref{lst:quadram-generate}.
+\texttt{generate} crée des instances matérielles parallèles à l'élaboration du modèle,
+et non une boucle d'exécution partageant une seule RAM.
+
+\noindent\begin{minipage}{\linewidth}
+\begin{lstlisting}[style=vhdl, caption={Instances de RAM créées par for ... generate}, label={lst:quadram-generate}]
+RAMS: for i in 0 to 2**Nbits_sel-1 generate
+  RAM: entity work.sync_ram(RTL)
+    generic map (Nbits_addr => Nbits_addr, Nbits_data => Nbits_data)
+    port map (cs => cs(i), clock => clock, we => we,
+              address => address(Nbits_addr-1 downto 0),
+              datain => datain, dataout => dataout);
+end generate RAMS;
+\end{lstlisting}
+\end{minipage}\par
+
+\paragraph{Validation de deux configurations.}
+Le testbench écrit au déplacement 5 de la RAM $i$ la valeur \texttt{0x11} multipliée par $i+1$,
+puis vérifie la lecture par assertion. Le tableau~\ref{tab:quadram-configs} présente
+les deux configurations testées sans modification des sources.
+
+\begin{table}[H]
+\centering
+\begin{tabular}{rrrrrl}
+\toprule
+\makecell{Bits de\\sélection} & \makecell{Bits d'adresse\\locale} &
+\makecell{Bits de\\données} & RAM & \makecell{Mots\\par RAM} & Résultat \\
+\midrule
+3 & 4 & 16 & 8 & 16 & aucune assertion en erreur \\
+2 & 10 & 32 & 4 & 1024 & aucune assertion en erreur \\
+\bottomrule
+\end{tabular}
+\caption{Configurations du quadram générique effectivement simulées}
+\label{tab:quadram-configs}
+\end{table}
+
+Avec huit RAM, les adresses \texttt{05}, \texttt{15}, jusqu'à \texttt{75} relisent
+\texttt{0011}, \texttt{0022}, jusqu'à \texttt{0088}. Le test se termine à 170~ns et
+l'horloge s'arrête à 180~ns (figure~\ref{fig:quadram-g8}).
+
+\simcapture{p3-generic-8x16x16.png}{660 674 10 130}{660 339 10 550}
+{Version générique : huit RAM de 16 mots de 16 bits, test des huit sélections}
+{fig:quadram-g8}
+
+La configuration du système final contient quatre RAM de 1024 mots de 32 bits.
+L'adresse de 12 bits comprend deux bits de sélection et dix bits d'adresse locale.
+Les mots \texttt{005}, \texttt{405}, \texttt{805} et \texttt{C05} relisent respectivement
+\texttt{11}, \texttt{22}, \texttt{33} et \texttt{44} sur 32 bits. Les assertions passent,
+la simulation s'arrête à 100~ns (figure~\ref{fig:quadram-g4}). La sélection et l'isolation
+sont ainsi vérifiées au déplacement utilisé dans les deux configurations.
+
+\simcapture{p3-generic-4x1024x32.png}{660 674 10 130}{660 194 10 690}
+{Configuration du système final : quatre RAM de 1024 mots de 32 bits}
+{fig:quadram-g4}

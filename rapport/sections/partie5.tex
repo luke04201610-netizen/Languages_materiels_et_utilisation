@@ -44,7 +44,7 @@ instancie le processeur Verilog en tant que \og component\fg{} ainsi que le bloc
   \draw[<-] (cpu.west |- 0,0.2)  -- ++(-0.9,0) node[left] {\texttt{reset}};
   \draw[<-] (mem.south) -- ++(0,-0.6) node[below] {\texttt{clock}};
 \end{tikzpicture}
-\caption{Système final : processeur et bloc \texttt{quadram}. Les bits 11--10 de l'adresse
+\caption[Système final : processeur et bloc quadram]{Système final : processeur et bloc \texttt{quadram}. Les bits 11--10 de l'adresse
 attaquent le décodeur ; les bits 9--0, la donnée à écrire, \texttt{we} et l'horloge sont communs
 aux quatre RAM, dont les sorties sont reliées (bus trois états).}
 \label{fig:systeme}
@@ -60,6 +60,7 @@ données changent : \texttt{lw} et \texttt{sw} passent maintenant par le bus
 \texttt{lw} place l'adresse, puis recopie \texttt{dataToRead} dans le registre destination. Les
 autres instructions ne sont pas modifiées.
 
+\noindent\begin{minipage}{\linewidth}
 \begin{lstlisting}[style=verilog, caption={Instructions \texttt{lw} et \texttt{sw} reliées au bloc \texttt{quadram}}, label={lst:lwsw}]
 `LW: begin
   address   = regs[`RS1] + `I_IMM;   // address on the bus (falling edge)
@@ -75,6 +76,7 @@ end
   we          = 0;
 end
 \end{lstlisting}
+\end{minipage}\par
 
 % ---------------------------------------------------------------------------
 \subsection{Synchronisation avec le bloc quadram}
@@ -151,6 +153,7 @@ que le module Verilog, écrits avec des types VHDL (\texttt{std\_logic} et
 ceux du processeur de type \texttt{std\_logic\_vector}.
 \end{itemize}
 
+\noindent\begin{minipage}{\linewidth}
 \begin{lstlisting}[style=vhdl, caption={Extrait de \texttt{systeme.vhd}}, label={lst:systeme}]
 component riscvproc is
   port (
@@ -179,6 +182,7 @@ MEM: entity work.quadram(RTL)
 -- the quadram works with unsigned, the processor with std_logic_vector
 dataToRead <= std_logic_vector(dataOut);
 \end{lstlisting}
+\end{minipage}\par
 
 Le testbench \texttt{systeme\_tb.vhd} génère l'horloge (période 10~ns) et le reset (à 1 jusqu'à
 12~ns) ; un processus de surveillance arrête la simulation au bout de 100~$\mu$s si le programme
@@ -186,6 +190,7 @@ n'atteint jamais \texttt{ebreak}. Les blocs des parties 2 et 3 sont réutilisés
 sont compilés depuis leurs dossiers, dans la même bibliothèque \texttt{work} que le processeur
 (code~\ref{lst:compil}).
 
+\noindent\begin{minipage}{\linewidth}
 \begin{lstlisting}[style=code, caption={Compilation et simulation du système dans ModelSim}, label={lst:compil}]
 vlib work
 vlog -sv riscvproc.sv
@@ -193,6 +198,7 @@ vcom -93 ../p2_q5/ramchip.vhd ../p3_q4/decoder.vhd ../p3_q4/quadram_for.vhd syst
 vsim -voptargs=+acc -onfinish stop work.systeme_tb
 run -all
 \end{lstlisting}
+\end{minipage}\par
 
 ModelSim associe le \texttt{component} au module Verilog de même nom présent dans la
 bibliothèque. Si ce module n'a pas été compilé, ModelSim ne donne qu'un avertissement
@@ -226,8 +232,13 @@ la même adresse. Les résultats sont ceux attendus (tableau~\ref{tab:memoire}).
 110, 130 et 150~ns, montrent que chaque \texttt{sw} dure deux périodes. Avant chaque écriture,
 \texttt{dataToRead} vaut X, car la RAM sélectionnée ne contient encore rien au mot lu ; la
 valeur écrite apparaît au front montant suivant. La simulation se
-termine à 350~ns : le programme compte 23 instructions, dont 11 \texttt{lw} ou \texttt{sw} de
-deux périodes, soit 34 périodes à partir de la première instruction à 20~ns.
+termine à 350~ns. Le programme compte 23 instructions, dont 11 accès mémoire qui ajoutent
+chacun une période. Entre la première instruction et \texttt{ebreak}, il y a donc
+$23-1+11=33$ périodes. Comme la première instruction commence à 20~ns et que
+\texttt{ebreak} arrête la simulation dès son exécution, on obtient :
+\[
+  t_{\mathrm{fin}} = 20 + (23-1+11)\times10 = 350~\mathrm{ns}.
+\]
 
 \begin{table}[H]
 \centering
@@ -253,12 +264,14 @@ signaux \texttt{clock}, \texttt{reset}, \texttt{pc}, \texttt{instr}, \texttt{we}
 {Les quatre écritures de \texttt{test\_memoire} : le décodeur sélectionne successivement les
 quatre RAM}{fig:memoire}
 
-Ce test a révélé une erreur dans notre \texttt{Sync\_Ram} de la partie~\ref{sec:ram} :
-l'écriture n'était pas conditionnée par \texttt{cs} (\lstinline[style=vlinline]|if we = '1' then|).
+Lors des premiers essais d'intégration, ce test a révélé un défaut de la version de
+\texttt{Sync\_Ram} alors utilisée : l'écriture n'était pas conditionnée par \texttt{cs}
+(\lstinline[style=vlinline]|if we = '1' then|).
 Comme les quatre RAM partagent l'adresse, la donnée et \texttt{we}, chaque \texttt{sw} écrivait
 dans les quatre RAM au même déplacement, et les quatre mots relus valaient tous 44 (x24 = 176 au
 lieu de 110). La condition est devenue \lstinline[style=vlinline]|if we = '1' and cs = '1' then|.
-Le testbench de \texttt{quadram} de la partie~\ref{sec:quadram} détecte aussi cette erreur
+Les essais de la RAM avec sélection et de \texttt{quadram} présentés dans les
+parties~\ref{sec:ram} et~\ref{sec:quadram} utilisent la version corrigée. Le testbench de \texttt{quadram} détecte aussi cette erreur
 (messages d'erreur sur les RAM 0 à 2) lorsqu'il est exécuté avec la RAM non corrigée.
 
 \paragraph{Programme test\_base.}
@@ -271,7 +284,64 @@ plus.
 \subsection{Différences avec le premier programme}
 \label{sec:instr}
 
-\acompleter{comparer \texttt{instr2.txt} avec le premier programme de test (\texttt{instr.txt},
-sur Madoc) : décoder les deux programmes instruction par instruction, en particulier les adresses
-des \texttt{lw} et \texttt{sw}, et expliquer pourquoi le premier programme devait être modifié
-pour fonctionner avec le système.}
+Le fichier \texttt{instr.txt} contient six instructions, puis les données 2 et 4 aux mots
+64 et 65. La directive \texttt{@40} donne l'adresse hexadécimale 40, soit l'indice de mot 64
+utilisé par ce modèle.
+
+Les deux premiers \texttt{lw} chargent ces données dans x1 et x2. Dans \texttt{instr2.txt},
+deux \texttt{addi} fournissent directement les mêmes valeurs ; les quatre instructions
+suivantes restent identiques (tableau~\ref{tab:programmes-comparaison}).
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabularx}{\linewidth}{cllX}
+\toprule
+Mot & \texttt{instr.txt} & \texttt{instr2.txt} & Effet attendu \\
+\midrule
+0 & \makecell[tl]{\texttt{04002083}\\\texttt{lw x1, 64(x0)}} &
+    \makecell[tl]{\texttt{00200093}\\\texttt{addi x1, x0, 2}} & x1 = 2 \\
+\addlinespace
+1 & \makecell[tl]{\texttt{04102103}\\\texttt{lw x2, 65(x0)}} &
+    \makecell[tl]{\texttt{00400113}\\\texttt{addi x2, x0, 4}} & x2 = 4 \\
+\addlinespace
+2 & \multicolumn{2}{l}{\texttt{00110133} : \texttt{add x2, x2, x1}} & x2 = 6 \\
+3 & \multicolumn{2}{l}{\texttt{001150b3} : \texttt{srl x1, x2, x1}} & x1 = 1 \\
+4 & \multicolumn{2}{l}{\texttt{0420a023} : \texttt{sw x2, 64(x1)}} & mot 65 = 6 \\
+5 & \multicolumn{2}{l}{\texttt{00100073} : \texttt{ebreak}} & arrêt \\
+\bottomrule
+\end{tabularx}
+\caption{Comparaison des deux programmes : seules les deux premières instructions changent}
+\label{tab:programmes-comparaison}
+\end{table}
+
+Sur le processeur corrigé, les deux programmes donnent x1 = 1, x2 = 6 et
+\texttt{memory[65]} = 6. Pour \texttt{instr.txt}, \texttt{\$readmemh} initialise aussi les
+données : les deux \texttt{lw} retrouvent donc 2 et 4 dans la mémoire interne.
+
+Dans le système, \texttt{\$readmemh} charge toujours cette mémoire interne, alors que
+\texttt{lw} lit dans \texttt{quadram}. Les valeurs placées à \texttt{@40} n'y sont pas
+transférées. Avec \texttt{instr.txt}, x1 et x2 sont indéfinis et le résultat est incorrect,
+bien que \texttt{ebreak} soit atteint. Avec \texttt{instr2.txt}, les deux \texttt{addi}
+fournissent les constantes et \texttt{sw} écrit le résultat dans la RAM externe.
+
+\begin{table}[H]
+\centering
+\begin{tabular}{llccr}
+\toprule
+Modèle & Programme & x1 & x2 & Fin \\
+\midrule
+Processeur corrigé, avec horloge & \texttt{instr.txt} & 1 & 6 & 70~ns \\
+Processeur corrigé, avec horloge & \texttt{instr2.txt} & 1 & 6 & 70~ns \\
+Système, RAM externes non initialisées & \texttt{instr.txt} & indéfini & indéfini & 100~ns \\
+Système & \texttt{instr2.txt} & 1 & 6 & 80~ns \\
+\bottomrule
+\end{tabular}
+\caption{Exécution des deux programmes avec mémoire interne puis externe}
+\label{tab:programmes-resultats}
+\end{table}
+
+Les deux \texttt{lw} du premier programme ajoutent deux périodes, soit 20~ns par rapport
+à \texttt{instr2.txt}. Pour conserver \texttt{instr.txt}, il faudrait initialiser explicitement
+les mots 64 et 65 de \texttt{quadram} ; nous avons retenu le second programme pour valider
+le système sans ce préchargement.

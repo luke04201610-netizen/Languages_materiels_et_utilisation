@@ -11,8 +11,8 @@ use IEEE.Numeric_Std.all;
 
 entity sync_ram is
   generic (
-    Nbits_addr : natural := 10;
-    Nbits_data : natural := 8
+    Nbits_addr : positive := 10;
+    Nbits_data : positive := 8
   );
   port (
     cs      : in  std_logic;

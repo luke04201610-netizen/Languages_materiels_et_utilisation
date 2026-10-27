@@ -6,8 +6,8 @@ use IEEE.Numeric_std.all;
 
 entity Ram_TB is  
 generic (
-    Nbits_addr : natural := 10;
-    Nbits_data : natural := 8
+    Nbits_addr : positive := 10;
+    Nbits_data : positive := 8
   );
 end entity Ram_TB;
 

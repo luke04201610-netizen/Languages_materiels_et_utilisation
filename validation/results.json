@@ -1,0 +1,644 @@
+[
+  {
+    "case": "ram_original_bench",
+    "passed": true,
+    "time_ns": 80.0,
+    "checks": 3,
+    "failures": [],
+    "observed": {
+      "out": "07",
+      "m1": "04",
+      "m2": "07"
+    },
+    "expected": {
+      "out": 7,
+      "m1": 4,
+      "m2": 7
+    }
+  },
+  {
+    "case": "ram_original_bench2",
+    "passed": true,
+    "time_ns": 20490.0,
+    "checks": 1,
+    "failures": [],
+    "observed": {
+      "ok": "TRUE"
+    },
+    "expected": {
+      "ok": "true"
+    }
+  },
+  {
+    "case": "ram_unsigned_bench",
+    "passed": true,
+    "time_ns": 80.0,
+    "checks": 3,
+    "failures": [],
+    "observed": {
+      "out": "07",
+      "m1": "04",
+      "m2": "07"
+    },
+    "expected": {
+      "out": 7,
+      "m1": 4,
+      "m2": 7
+    }
+  },
+  {
+    "case": "ram_unsigned_bench2",
+    "passed": true,
+    "time_ns": 20490.0,
+    "checks": 1,
+    "failures": [],
+    "observed": {
+      "ok": "TRUE"
+    },
+    "expected": {
+      "ok": "true"
+    }
+  },
+  {
+    "case": "ram_generic_16x16",
+    "passed": true,
+    "time_ns": 660.0,
+    "checks": 1,
+    "failures": [],
+    "observed": {
+      "ok": "TRUE"
+    },
+    "expected": {
+      "ok": "true"
+    }
+  },
+  {
+    "case": "ram_generic_1024x32",
+    "passed": true,
+    "time_ns": 40980.0,
+    "checks": 1,
+    "failures": [],
+    "observed": {
+      "ok": "TRUE"
+    },
+    "expected": {
+      "ok": "true"
+    }
+  },
+  {
+    "case": "ram_generic_1024x8",
+    "passed": true,
+    "time_ns": 40980.0,
+    "checks": 1,
+    "failures": [],
+    "observed": {
+      "ok": "TRUE"
+    },
+    "expected": {
+      "ok": "true"
+    }
+  },
+  {
+    "case": "ram_chip_select",
+    "passed": true,
+    "time_ns": 110.0,
+    "checks": 6,
+    "failures": [],
+    "observed": {
+      "disabled": "0",
+      "high_z": "ZZ",
+      "blocked_write": "04",
+      "enabled": "1",
+      "old_word": "04",
+      "m1": "04"
+    },
+    "expected": {
+      "disabled": 0,
+      "high_z": "z",
+      "blocked_write": 4,
+      "enabled": 1,
+      "old_word": 4,
+      "m1": 4
+    }
+  },
+  {
+    "case": "decoder",
+    "passed": true,
+    "time_ns": 50.0,
+    "checks": 1,
+    "failures": [],
+    "observed": {
+      "invalid_selects_none": "0"
+    },
+    "expected": {
+      "invalid_selects_none": 0
+    }
+  },
+  {
+    "case": "quadram_fixed",
+    "passed": true,
+    "time_ns": 100.0,
+    "checks": 1,
+    "failures": [],
+    "observed": {
+      "last_read": "44"
+    },
+    "expected": {
+      "last_read": 68
+    }
+  },
+  {
+    "case": "quadram_8x16x16",
+    "passed": true,
+    "time_ns": 180.0,
+    "checks": 1,
+    "failures": [],
+    "observed": {
+      "last_read": "0088"
+    },
+    "expected": {
+      "last_read": 136
+    }
+  },
+  {
+    "case": "quadram_4x1024x32",
+    "passed": true,
+    "time_ns": 100.0,
+    "checks": 1,
+    "failures": [],
+    "observed": {
+      "last_read": "00000044"
+    },
+    "expected": {
+      "last_read": 68
+    }
+  },
+  {
+    "case": "cpu_original_base_known_defects",
+    "passed": true,
+    "time_ns": 160.0,
+    "checks": 11,
+    "failures": [],
+    "observed": {
+      "x0": "00000005",
+      "x1": "00000ff9",
+      "x3": "fffff06b",
+      "x4": "00000ff0",
+      "x5": "00000fff",
+      "x8": "000001ff",
+      "x9": "00000ff9",
+      "x10": "00000ff9",
+      "x11": "0000000a",
+      "m0": "00000ff9",
+      "m104": "xxxxxxxx"
+    },
+    "expected": {
+      "x0": 5,
+      "x1": 4089,
+      "x3": -3989,
+      "x4": 4080,
+      "x5": 4095,
+      "x8": 511,
+      "x9": 4089,
+      "x10": 4089,
+      "x11": 10,
+      "m0": 4089,
+      "m104": "unknown"
+    }
+  },
+  {
+    "case": "cpu_original_instr2_known_defect",
+    "passed": true,
+    "time_ns": 70.0,
+    "checks": 4,
+    "failures": [],
+    "observed": {
+      "x1": "00000001",
+      "x2": "00000006",
+      "m0": "00000006",
+      "m65": "xxxxxxxx"
+    },
+    "expected": {
+      "x1": 1,
+      "x2": 6,
+      "m0": 6,
+      "m65": "unknown"
+    }
+  },
+  {
+    "case": "cpu_corrected_instr",
+    "passed": true,
+    "time_ns": 70.0,
+    "checks": 3,
+    "failures": [],
+    "observed": {
+      "x1": "00000001",
+      "x2": "00000006",
+      "m65": "00000006"
+    },
+    "expected": {
+      "x1": 1,
+      "x2": 6,
+      "m65": 6
+    }
+  },
+  {
+    "case": "cpu_clocked_instr",
+    "passed": true,
+    "time_ns": 70.0,
+    "checks": 3,
+    "failures": [],
+    "observed": {
+      "x1": "00000001",
+      "x2": "00000006",
+      "m65": "00000006"
+    },
+    "expected": {
+      "x1": 1,
+      "x2": 6,
+      "m65": 6
+    }
+  },
+  {
+    "case": "cpu_corrected_instr2",
+    "passed": true,
+    "time_ns": 70.0,
+    "checks": 3,
+    "failures": [],
+    "observed": {
+      "x1": "00000001",
+      "x2": "00000006",
+      "m65": "00000006"
+    },
+    "expected": {
+      "x1": 1,
+      "x2": 6,
+      "m65": 6
+    }
+  },
+  {
+    "case": "cpu_clocked_instr2",
+    "passed": true,
+    "time_ns": 70.0,
+    "checks": 3,
+    "failures": [],
+    "observed": {
+      "x1": "00000001",
+      "x2": "00000006",
+      "m65": "00000006"
+    },
+    "expected": {
+      "x1": 1,
+      "x2": 6,
+      "m65": 6
+    }
+  },
+  {
+    "case": "cpu_corrected_test_base",
+    "passed": true,
+    "time_ns": 160.0,
+    "checks": 14,
+    "failures": [],
+    "observed": {
+      "x0": "00000000",
+      "x1": "fffffff9",
+      "x2": "00000064",
+      "x3": "0000006b",
+      "x4": "fffffff0",
+      "x5": "ffffffff",
+      "x6": "00000003",
+      "x7": "00000320",
+      "x8": "1fffffff",
+      "x9": "0000006b",
+      "x10": "fffffff9",
+      "x11": "00000000",
+      "m104": "0000006b",
+      "m96": "fffffff9"
+    },
+    "expected": {
+      "x0": 0,
+      "x1": -7,
+      "x2": 100,
+      "x3": 107,
+      "x4": -16,
+      "x5": -1,
+      "x6": 3,
+      "x7": 800,
+      "x8": 536870911,
+      "x9": 107,
+      "x10": -7,
+      "x11": 0,
+      "m104": 107,
+      "m96": -7
+    }
+  },
+  {
+    "case": "cpu_clocked_test_base",
+    "passed": true,
+    "time_ns": 160.0,
+    "checks": 14,
+    "failures": [],
+    "observed": {
+      "x0": "00000000",
+      "x1": "fffffff9",
+      "x2": "00000064",
+      "x3": "0000006b",
+      "x4": "fffffff0",
+      "x5": "ffffffff",
+      "x6": "00000003",
+      "x7": "00000320",
+      "x8": "1fffffff",
+      "x9": "0000006b",
+      "x10": "fffffff9",
+      "x11": "00000000",
+      "m104": "0000006b",
+      "m96": "fffffff9"
+    },
+    "expected": {
+      "x0": 0,
+      "x1": -7,
+      "x2": 100,
+      "x3": 107,
+      "x4": -16,
+      "x5": -1,
+      "x6": 3,
+      "x7": 800,
+      "x8": 536870911,
+      "x9": 107,
+      "x10": -7,
+      "x11": 0,
+      "m104": 107,
+      "m96": -7
+    }
+  },
+  {
+    "case": "cpu_corrected_test_rv32im",
+    "passed": true,
+    "time_ns": 190.0,
+    "checks": 16,
+    "failures": [],
+    "observed": {
+      "x1": "fffffff9",
+      "x2": "00000002",
+      "x3": "fffffff2",
+      "x4": "fffffffd",
+      "x5": "ffffffff",
+      "x6": "7ffffffc",
+      "x7": "ffffffff",
+      "x8": "ffffffff",
+      "x9": "00000001",
+      "x10": "00000001",
+      "x11": "80000000",
+      "x12": "ffffffff",
+      "x13": "0000001f",
+      "x14": "80000000",
+      "x15": "00000000",
+      "x16": "ffffffff"
+    },
+    "expected": {
+      "x1": -7,
+      "x2": 2,
+      "x3": -14,
+      "x4": -3,
+      "x5": -1,
+      "x6": 2147483644,
+      "x7": -1,
+      "x8": -1,
+      "x9": 1,
+      "x10": 1,
+      "x11": -2147483648,
+      "x12": -1,
+      "x13": 31,
+      "x14": -2147483648,
+      "x15": 0,
+      "x16": -1
+    }
+  },
+  {
+    "case": "cpu_clocked_test_rv32im",
+    "passed": true,
+    "time_ns": 190.0,
+    "checks": 16,
+    "failures": [],
+    "observed": {
+      "x1": "fffffff9",
+      "x2": "00000002",
+      "x3": "fffffff2",
+      "x4": "fffffffd",
+      "x5": "ffffffff",
+      "x6": "7ffffffc",
+      "x7": "ffffffff",
+      "x8": "ffffffff",
+      "x9": "00000001",
+      "x10": "00000001",
+      "x11": "80000000",
+      "x12": "ffffffff",
+      "x13": "0000001f",
+      "x14": "80000000",
+      "x15": "00000000",
+      "x16": "ffffffff"
+    },
+    "expected": {
+      "x1": -7,
+      "x2": 2,
+      "x3": -14,
+      "x4": -3,
+      "x5": -1,
+      "x6": 2147483644,
+      "x7": -1,
+      "x8": -1,
+      "x9": 1,
+      "x10": 1,
+      "x11": -2147483648,
+      "x12": -1,
+      "x13": 31,
+      "x14": -2147483648,
+      "x15": 0,
+      "x16": -1
+    }
+  },
+  {
+    "case": "system_instr2",
+    "passed": true,
+    "time_ns": 80.0,
+    "checks": 3,
+    "failures": [],
+    "observed": {
+      "x1": "00000001",
+      "x2": "00000006",
+      "m65": "00000006"
+    },
+    "expected": {
+      "x1": 1,
+      "x2": 6,
+      "m65": 6
+    }
+  },
+  {
+    "case": "system_test_base",
+    "passed": true,
+    "time_ns": 200.0,
+    "checks": 14,
+    "failures": [],
+    "observed": {
+      "x0": "00000000",
+      "x1": "fffffff9",
+      "x2": "00000064",
+      "x3": "0000006b",
+      "x4": "fffffff0",
+      "x5": "ffffffff",
+      "x6": "00000003",
+      "x7": "00000320",
+      "x8": "1fffffff",
+      "x9": "0000006b",
+      "x10": "fffffff9",
+      "x11": "00000000",
+      "m104": "0000006B",
+      "m96": "FFFFFFF9"
+    },
+    "expected": {
+      "x0": 0,
+      "x1": -7,
+      "x2": 100,
+      "x3": 107,
+      "x4": -16,
+      "x5": -1,
+      "x6": 3,
+      "x7": 800,
+      "x8": 536870911,
+      "x9": 107,
+      "x10": -7,
+      "x11": 0,
+      "m104": 107,
+      "m96": -7
+    }
+  },
+  {
+    "case": "system_test_rv32im",
+    "passed": true,
+    "time_ns": 190.0,
+    "checks": 16,
+    "failures": [],
+    "observed": {
+      "x1": "fffffff9",
+      "x2": "00000002",
+      "x3": "fffffff2",
+      "x4": "fffffffd",
+      "x5": "ffffffff",
+      "x6": "7ffffffc",
+      "x7": "ffffffff",
+      "x8": "ffffffff",
+      "x9": "00000001",
+      "x10": "00000001",
+      "x11": "80000000",
+      "x12": "ffffffff",
+      "x13": "0000001f",
+      "x14": "80000000",
+      "x15": "00000000",
+      "x16": "ffffffff"
+    },
+    "expected": {
+      "x1": -7,
+      "x2": 2,
+      "x3": -14,
+      "x4": -3,
+      "x5": -1,
+      "x6": 2147483644,
+      "x7": -1,
+      "x8": -1,
+      "x9": 1,
+      "x10": 1,
+      "x11": -2147483648,
+      "x12": -1,
+      "x13": 31,
+      "x14": -2147483648,
+      "x15": 0,
+      "x16": -1
+    }
+  },
+  {
+    "case": "system_test_memoire",
+    "passed": true,
+    "time_ns": 350.0,
+    "checks": 12,
+    "failures": [],
+    "observed": {
+      "x20": "0000000b",
+      "x21": "00000016",
+      "x22": "00000021",
+      "x23": "0000002c",
+      "x24": "0000006e",
+      "x25": "0000002c",
+      "x26": "0000006e",
+      "m5": "0000000B",
+      "m1029": "00000016",
+      "m2053": "00000021",
+      "m3077": "0000002C",
+      "m1023": "0000006E"
+    },
+    "expected": {
+      "x20": 11,
+      "x21": 22,
+      "x22": 33,
+      "x23": 44,
+      "x24": 110,
+      "x25": 44,
+      "x26": 110,
+      "m5": 11,
+      "m1029": 22,
+      "m2053": 33,
+      "m3077": 44,
+      "m1023": 110
+    }
+  },
+  {
+    "case": "system_instr_uninitialised_external_data",
+    "passed": true,
+    "time_ns": 100.0,
+    "checks": 3,
+    "failures": [],
+    "observed": {
+      "x1": "xxxxxxxx",
+      "x2": "xxxxxxxx",
+      "m65": "XXXXXXXX"
+    },
+    "expected": {
+      "x1": "unknown",
+      "x2": "unknown",
+      "m65": "unknown"
+    }
+  },
+  {
+    "case": "cpu_original_rv32m_unsupported",
+    "passed": true,
+    "time_ns": 190.0,
+    "checks": 11,
+    "observed": {
+      "x3": "00000000",
+      "x4": "00000000",
+      "x5": "00000000",
+      "x6": "00000000",
+      "x7": "00000000",
+      "x8": "00000000",
+      "x9": "00000000",
+      "x10": "00000000",
+      "x14": "00000000",
+      "x15": "00000000",
+      "x16": "00000000"
+    },
+    "expected": {
+      "x3": 0,
+      "x4": 0,
+      "x5": 0,
+      "x6": 0,
+      "x7": 0,
+      "x8": 0,
+      "x9": 0,
+      "x10": 0,
+      "x14": 0,
+      "x15": 0,
+      "x16": 0
+    },
+    "failures": []
+  }
+]

@@ -1,8 +1,212 @@
 \section{Récupération d'un modèle de RAM}
 \label{sec:ram}
 
-\acompleter{analyse du modèle \texttt{ramchip.vhd} et de son testbench ; passage au type
-\texttt{unsigned} ; généricité (\texttt{Nbits\_addr}, \texttt{Nbits\_data}) ; signal CS
-asynchrone (sortie haute impédance, écriture autorisée seulement si
-\texttt{cs = \textquotesingle 1\textquotesingle}) ;
-simulations (Bench et Bench2).}
+Le premier bloc à réutiliser est une RAM synchrone fournie avec deux testbenches.
+Nous avons conservé son fonctionnement, puis adapté les types, les dimensions et la
+sélection pour pouvoir relier plusieurs instances au même bus.
+
+\subsection{Analyse du modèle et du testbench}
+
+Le modèle initial, \texttt{ramchip.vhd}, décrit l'entité \texttt{sync\_ram}.
+Son adresse de 10 bits donne accès à $2^{10}=1024$ mots de 8 bits. Les entrées sont
+l'horloge \texttt{clock}, l'autorisation d'écriture \texttt{we}, l'adresse et la donnée à
+écrire ; la sortie \texttt{dataout} fournit la donnée lue. Le tableau mémoire n'est pas
+initialisé.
+
+Le code~\ref{lst:ram-originale} distingue deux mécanismes. Au front montant, si
+\texttt{we = '1'}, la donnée est écrite à l'adresse présente sur l'entrée. Le même
+processus mémorise l'adresse dans \texttt{read\_address}, quelle que soit la valeur de
+\texttt{we}. L'affectation concurrente de sortie utilise cette adresse mémorisée : un
+changement de l'adresse d'entrée ne suffit donc pas à actualiser la lecture, il faut
+attendre le front montant suivant.
+
+\noindent\begin{minipage}{\linewidth}
+\begin{lstlisting}[style=vhdl, caption={Lecture et écriture du modèle initial}, label={lst:ram-originale}]
+if rising_edge(clock) then
+  if we = '1' then
+    ram(to_integer(unsigned(address))) <= datain;
+  end if;
+  read_address <= address;
+end if;
+...
+dataout <= ram(to_integer(unsigned(read_address)));
+\end{lstlisting}
+\end{minipage}\par
+
+Le fichier \texttt{ram\_tb.vhd} contient deux architectures : \texttt{Bench} présente
+un scénario court et \texttt{Bench2} effectue une boucle d'écriture suivie d'une boucle de
+lecture. Nous les avons simulées séparément. L'horloge a une période de 10~ns et s'arrête
+lorsque \texttt{StopClock} devient vrai.
+
+\paragraph{Scénario court.}
+Le testbench modifie ses entrées juste après un front montant, par des affectations de
+signaux. Le processus de la RAM voit encore les anciennes valeurs à ce front : les
+nouvelles valeurs seront prises en compte au front suivant. Le
+tableau~\ref{tab:ram-chrono} donne les principaux événements observés sur la
+figure~\ref{fig:ram-originale}.
+
+\begin{table}[H]
+\centering
+\begin{tabularx}{\linewidth}{rX}
+\toprule
+Temps & Résultat observé \\
+\midrule
+25~ns & Écriture de 4 au mot 1 ; la sortie prend la valeur 4 après mise à jour des signaux. \\
+35~ns & Écriture de 7 au mot 2 ; la sortie prend la valeur 7. \\
+45~ns & Le testbench demande le mot 1 ; l'adresse mémorisée reste 2 et la sortie reste 7. \\
+55~ns & L'adresse 1 est mémorisée et la sortie prend la valeur 4. \\
+65~ns & L'adresse 2 est mémorisée et la sortie prend la valeur 7. \\
+\bottomrule
+\end{tabularx}
+\caption{Chronologie du test court de la RAM initiale}
+\label{tab:ram-chrono}
+\end{table}
+
+\simcapture{p2-original.png}{615 564 10 130}{615 154 10 630}
+{RAM initiale : écritures de 4 et 7, puis lectures aux adresses 1 et 2}
+{fig:ram-originale}
+
+La sortie initiale indéfinie est attendue : ni la mémoire ni le registre d'adresse ne
+sont initialisés. ModelSim peut aussi signaler à 0~ns une métavaleur lors de la conversion
+de l'adresse en entier. Dans ce modèle, une lecture du mot écrit au même front donne la
+nouvelle donnée après les mises à jour des signaux ; ce comportement décrit ici la
+simulation du code fourni.
+
+\paragraph{Test en boucle.}
+\texttt{Bench2} utilise le signal booléen \texttt{ok}, qui reste faux dès qu'une comparaison
+échoue. Notre exécution se termine à 20490~ns avec \texttt{ok = TRUE}. La comparaison
+soustrait 1 à l'adresse courante car, au moment où elle est exécutée au front montant,
+\texttt{dataout} correspond encore à l'adresse précédente.
+
+Le test a toutefois deux limites : les données se répètent tous les 256 mots, ce qui peut
+masquer un défaut sur les bits d'adresse de poids fort, et la dernière donnée lue au mot
+1023 n'est pas comparée. Nous avons gardé ce test pour la comparaison avant/après, puis
+ajouté un contrôle de toutes les adresses à la section~\ref{sec:ram-generique}.
+
+\subsection{Passage au type unsigned et nouvelle simulation}
+
+Nous avons remplacé \texttt{std\_logic\_vector} par \texttt{unsigned} pour les ports
+d'adresse et de données, les mots mémoire, le registre d'adresse et les signaux du
+testbench. Ce type de \texttt{numeric\_std} représente un entier non signé et permet
+d'écrire directement \texttt{address + 1}.
+
+Les conversions entourant l'adresse deviennent inutiles :
+\texttt{to\_integer(unsigned(address))} devient \texttt{to\_integer(address)}.
+Le rôle des signaux, leurs largeurs et les conditions de lecture et d'écriture sont
+conservés. L'horloge et \texttt{we}, qui ne portent pas des nombres, restent de type
+\texttt{std\_logic}.
+
+Nous avons relancé les deux architectures après recompilation. Le scénario court
+reproduit les valeurs et les instants du tableau~\ref{tab:ram-chrono}
+(figure~\ref{fig:ram-unsigned}). Le test \texttt{Bench2} se termine à nouveau à 20490~ns,
+avec \texttt{ok = TRUE}. Ces deux observations confirment la conservation du comportement
+pour les scénarios testés.
+
+\simcapture{p2-unsigned.png}{660 564 10 130}{660 154 10 630}
+{RAM avec ports unsigned : même chronologie que le modèle initial}
+{fig:ram-unsigned}
+
+\subsection{Paramétrage de la capacité et de la largeur des données}
+\label{sec:ram-generique}
+
+Deux paramètres \texttt{generic} déterminent les dimensions du bloc
+(code~\ref{lst:ram-generique}). \texttt{Nbits\_addr} donne la largeur d'adresse, donc la
+capacité vaut $2^{\mathtt{Nbits\_addr}}$ mots ; \texttt{Nbits\_data} donne le nombre de bits
+par mot. Nous les avons déclarés de type \texttt{positive} pour exclure les largeurs nulles.
+Les valeurs par défaut, 10 et 8, retrouvent le modèle initial.
+
+\noindent\begin{minipage}{\linewidth}
+\begin{lstlisting}[style=vhdl, caption={Paramètres et ports de la RAM générique}, label={lst:ram-generique}]
+generic (
+  Nbits_addr : positive := 10;
+  Nbits_data : positive := 8
+);
+port (
+  clock   : in  std_logic;
+  we      : in  std_logic;
+  address : in  unsigned(Nbits_addr-1 downto 0);
+  datain  : in  unsigned(Nbits_data-1 downto 0);
+  dataout : out unsigned(Nbits_data-1 downto 0)
+);
+\end{lstlisting}
+\end{minipage}\par
+
+L'architecture utilise déjà les attributs des ports : le tableau contient
+\texttt{2**address'length} éléments, chacun de type \texttt{unsigned(datain'range)}, et
+\texttt{read\_address} reprend \texttt{address'range}. Elle s'adapte ainsi aux dimensions
+choisies sans changer le processus de lecture et d'écriture. Un \texttt{generic map}
+permet de choisir une configuration propre à chaque instance.
+
+\paragraph{Vérification de deux configurations.}
+Le \texttt{Bench2} hérité compare encore les données à
+\texttt{address(7 downto 0) - 1} : il n'est pas adapté à toutes les nouvelles dimensions.
+Nous avons donc ajouté l'architecture \texttt{GenericCheck} dans
+\path{ram_generic_check.vhd}, en conservant les deux tests précédents.
+
+Ce test écrit puis relit toutes les adresses, y compris la dernière. Les entrées changent
+au front descendant, la RAM les échantillonne au front montant et la lecture est contrôlée
+au front descendant suivant. Le motif de données replie les bits d'adresse par XOR sur
+la largeur du mot ; une seconde passe utilise son complément. Chaque bit de données est
+ainsi exercé à 0 et à 1, et tous les bits d'adresse participent au motif. Les deux
+configurations du tableau~\ref{tab:ram-generiques} passent ce contrôle.
+
+\begin{table}[H]
+\centering
+\begin{tabular}{rrrrl}
+\toprule
+Bits d'adresse & Bits de données & Mots & Fin de simulation & Résultat \\
+\midrule
+4 & 16 & 16 & 660~ns & \texttt{ok = TRUE} \\
+10 & 32 & 1024 & 40980~ns & \texttt{ok = TRUE} \\
+\bottomrule
+\end{tabular}
+\caption{Configurations vérifiées avec deux passes complémentaires}
+\label{tab:ram-generiques}
+\end{table}
+
+Le modèle de RAM et le testbench sont identiques pour les deux essais ; seuls les
+paramètres changent au chargement dans ModelSim. Le contrôle se termine respectivement
+à 650 et 40970~ns, puis l'horloge s'arrête une période plus tard. La
+figure~\ref{fig:ram-g32} montre les deux passes pour la configuration 1024 mots de 32 bits.
+
+\simcapture{p2-generic-1024x32.png}{660 574 10 130}{660 154 10 630}
+{Configuration 1024 mots de 32 bits : même testbench et résultat TRUE}
+{fig:ram-g32}
+
+\subsection{Ajout d'une sélection asynchrone CS}
+
+Pour relier plusieurs sorties mémoire, une seule RAM doit piloter le bus à un instant
+donné. Nous avons ajouté l'entrée \texttt{cs}, active à 1. Une
+affectation concurrente impose la haute impédance lorsque la RAM n'est pas sélectionnée
+(code~\ref{lst:ram-cs}). La réaction à \texttt{cs} est asynchrone : elle n'attend pas
+de front d'horloge. L'adresse de lecture reste, elle, mémorisée au front montant.
+
+\noindent\begin{minipage}{\linewidth}
+\begin{lstlisting}[style=vhdl, caption={Sélection des écritures et commande de la sortie}, label={lst:ram-cs}]
+if rising_edge(clock) then
+  if we = '1' and cs = '1' then
+    ram(to_integer(address)) <= datain;
+  end if;
+  read_address <= address;
+end if;
+...
+dataout <= ram(to_integer(read_address))
+           when cs = '1' else (others => 'Z');
+\end{lstlisting}
+\end{minipage}\par
+
+La sélection doit aussi conditionner l'écriture : avec un \texttt{we} commun, les RAM
+non sélectionnées seraient sinon modifiées. Les essais de la RAM avec sélection et de
+\texttt{quadram} ont été relancés après la correction décrite en
+section~\ref{sec:validsysteme}.
+
+Le scénario court conserve d'abord les écritures de 4 et 7, puis désactive \texttt{cs}
+à 67~ns, entre deux fronts d'horloge. La sortie passe immédiatement en haute impédance.
+Au front montant de 85~ns, \texttt{we} vaut 1 et la donnée proposée est 9 à l'adresse 1,
+mais \texttt{cs} vaut 0 : le mot reste égal à 4. À 87~ns, la sélection est rétablie,
+toujours entre deux fronts, et la sortie reprend immédiatement la valeur 4
+(figure~\ref{fig:ram-cs}). La trace interne \texttt{ram(1)} confirme la conservation du mot.
+
+\simcapture{p2-cs.png}{660 564 10 130}{660 154 10 630}
+{CS asynchrone : sortie à haute impédance et écriture bloquée entre 67 et 87 ns}
+{fig:ram-cs}

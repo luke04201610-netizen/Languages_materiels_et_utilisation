@@ -29,3 +29,6 @@ __pycache__/
 *.xdv
 *.bcf
 *.run.xml
+
+# Local PDF checks and compiler resource cache
+tmp/pdfs/

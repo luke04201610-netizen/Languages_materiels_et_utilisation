@@ -1,6 +1,19 @@
 \addsec{Introduction}
 \markboth{Introduction}{}
 
-\acompleter{objectifs du mini-projet (réutilisation de blocs VHDL, généricité, intégration
-d'un processeur RISC-V écrit en Verilog), outils utilisés (ModelSim SE-64 2020.4) et plan du
-rapport~\cite{sujet}.}
+Le sujet propose de construire un système à processeur en réutilisant une RAM décrite en
+VHDL et un processeur RISC-V décrit en Verilog~\cite{sujet}. Nous sommes partis de ces deux
+modèles pour obtenir un système dans lequel le programme reste dans le processeur, tandis
+que les données sont stockées dans une mémoire externe composée de plusieurs RAM.
+
+Nous avons d'abord analysé la RAM, adapté ses types et rendu ses dimensions configurables.
+Une entrée de sélection et un décodeur permettent ensuite de partager le bus entre les
+instances. Côté processeur, nous avons corrigé les accès mémoire et le traitement des
+immédiats, ajouté les instructions de l'extension M, puis introduit une horloge et les
+signaux nécessaires à la connexion avec la mémoire.
+
+Les simulations ont été réalisées sous ModelSim SE-64 2020.4. Nous présentons les
+modifications avec les chronogrammes, les valeurs attendues et les résultats des tests.
+Le rapport suit les parties 2 à 5 du sujet : RAM simple, bloc \texttt{quadram}, processeur
+et système complet. Les possibilités de synthèse sur FPGA et d'utilisation d'un
+compilateur RISC-V sont discutées en conclusion.

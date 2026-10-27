@@ -2,7 +2,7 @@
 \usepackage{template}
 \addbibresource{biblio.bib}
 
-% Compilation : pdflatex -> biber -> pdflatex -> pdflatex
+% Compilation : pdflatex -> bibtex -> pdflatex -> pdflatex
 % (ou latexmk -pdf main.tex)
 
 \begin{document}
@@ -13,19 +13,26 @@
 \newpage
 
 \input{sections/introduction}
+\clearpage
 
 % Numérotation des parties identique à celle du sujet (parties 2 à 5)
 \setcounter{section}{1}
 \input{sections/partie2}
+\clearpage
 \input{sections/partie3}
+\clearpage
 \input{sections/partie4}
+\clearpage
 \input{sections/partie5}
 
+\clearpage
 \input{sections/conclusion}
 
-\newpage
+\clearpage
 \listoffigures
+\clearpage
 \listoftables
+\clearpage
 \printbibliography[heading=bibintoc, title={Bibliographie}]
 
 \end{document}

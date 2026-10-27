@@ -1,5 +1,28 @@
 \addsec{Conclusion}
 \markboth{Conclusion}{}
 
-\acompleter{bilan du travail réalisé, difficultés rencontrées et perspectives (parties 6 et 7 :
-synthèse sur FPGA, compatibilité avec un flot de compilation RISC-V).}
+Le système obtenu associe un processeur Verilog à quatre RAM VHDL de 1024 mots de 32 bits.
+Le même modèle de RAM est utilisé seul, dans les tests de \texttt{quadram} et dans le
+système final. Les paramètres permettent d'en changer les dimensions sans réécrire son
+architecture.
+
+Les essais ont surtout mis en évidence deux conditions d'intégration : seule la RAM
+sélectionnée doit accepter une écriture, et le processeur doit attendre la mémorisation
+de l'adresse avant de lire une donnée. Le programme \texttt{test\_memoire} vérifie la
+sélection des quatre blocs, un déplacement négatif et une frontière entre deux RAM.
+La comparaison de \texttt{instr.txt} et \texttt{instr2.txt} montre aussi que déplacer les
+données vers une mémoire externe oblige à revoir leur initialisation.
+
+Les tests de validation du processeur corrigé et du système donnent les résultats attendus.
+La vérification finale reproduit également les défauts du modèle d'origine et l'échec du
+premier programme lorsque les données externes ne sont pas initialisées. Cette validation
+reste celle des cas testés : le processeur implémente un sous-ensemble de RV32I et les huit
+instructions de l'extension M, et non toute l'ISA RV32IM.
+
+Pour aller jusqu'à une implantation sur FPGA, il faudrait remplacer les attentes
+comportementales par une machine à états synchrone, utiliser une sélection de données
+adaptée aux ressources internes de la cible, puis vérifier la synthèse, les contraintes
+d'horloge et le fonctionnement sur carte. Pour exécuter du code issu d'un compilateur C
+RISC-V, il faudrait compléter les instructions, passer à l'adressage par octets et prévoir
+le démarrage du programme, la pile et la répartition des mémoires. Ces deux prolongements
+n'ont pas été réalisés.

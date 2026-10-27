@@ -26,6 +26,9 @@
 }
 \usepackage{setspace}
 \onehalfspacing
+\setlength{\emergencystretch}{3em}
+\clubpenalty=10000
+\widowpenalty=10000
 
 % Polices
 \usepackage{mathastext}
@@ -97,14 +100,15 @@
 
 \usepackage{comment}
 
-% Bibliographie : biblatex + biber (l'éditeur lance biber, cf. main.blg du modèle)
+% Bibliographie : biblatex + bibtex, compatible avec le compilateur integre.
 \usepackage{csquotes}
-\usepackage[backend=biber, style=numeric, sorting=none]{biblatex}
+\usepackage[backend=bibtex, style=numeric, sorting=none]{biblatex}
+\AtBeginBibliography{\renewcommand*{\mkbibnamefamily}[1]{#1}}
 
 % Code VHDL et Verilog
 \usetikzlibrary{arrows.meta, positioning, calc}
 \lstdefinestyle{code}{
-    basicstyle=\ttfamily\footnotesize,
+    basicstyle=\ttfamily\footnotesize\setstretch{1},
     keywordstyle=\color{blue!70!black}\bfseries,
     commentstyle=\color{green!40!black}\itshape,
     stringstyle=\color{red!60!black},
@@ -124,11 +128,6 @@
 \renewcommand{\lstlistingname}{Code}
 \renewcommand{\lstlistlistingname}{Liste des codes}
 
-% Parties à rédiger
-\newcommand{\acompleter}[1]{\par\medskip\noindent
-    \fcolorbox{red}{red!5}{\parbox{\dimexpr\linewidth-2\fboxsep-2\fboxrule\relax}{%
-    \textcolor{red}{\textbf{À compléter :}} #1}}\par\medskip}
-
 % Capture d'écran ModelSim : affichée si le fichier existe dans figures/,
 % sinon un cadre rappelle quoi capturer
 % \capture[largeur]{fichier}{ce qu'il faut capturer}{légende}{étiquette}
@@ -139,6 +138,18 @@
     \IfFileExists{figures/#2}{\includegraphics[width=#1]{figures/#2}}{%
         \fcolorbox{red}{red!5}{\parbox[c][3.2cm][c]{0.92\linewidth}{\centering
         \textcolor{red}{\textbf{Capture à insérer :} \texttt{figures/#2}}\\[2mm]\small #3}}}
+    \caption{#4}
+    \label{#5}
+    \end{figure}}
+
+% Affichage des zones utiles des captures : signaux, puis axe temporel.
+% Les PNG originaux restent intacts. Les quatre valeurs de rognage sont en bp.
+% #1 fichier, #2 rognage signaux, #3 rognage axe, #4 legende, #5 etiquette.
+\newcommand{\simcapture}[5]{%
+    \begin{figure}[H]
+    \centering
+    \includegraphics[width=\linewidth,trim={#2},clip]{figures/#1}\par\vspace{-2pt}
+    \includegraphics[width=\linewidth,trim={#3},clip]{figures/#1}
     \caption{#4}
     \label{#5}
     \end{figure}}

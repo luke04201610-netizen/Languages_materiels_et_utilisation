@@ -104,8 +104,12 @@ module riscvproc (
   */
   integer index;
 
+  // Optional program selection; keep the exercise's original default.
+  string progfile;
   initial begin
-    $readmemh("instr2.txt", memory);
+    if (!$value$plusargs("prog=%s", progfile))
+      progfile = "instr2.txt";
+    $readmemh(progfile, memory);
     // initialize program counter to 0
     pc = 0;
     // initialize all registers to 0

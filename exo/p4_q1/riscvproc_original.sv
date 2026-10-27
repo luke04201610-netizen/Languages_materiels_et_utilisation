@@ -86,8 +86,12 @@ module system;
   */
   integer index;
 
+  // Optional program selection; keep the exercise's original default.
+  string progfile;
   initial begin
-    $readmemh("test_base.txt", memory);
+    if (!$value$plusargs("prog=%s", progfile))
+      progfile = "test_base.txt";
+    $readmemh(progfile, memory);
     // initialize program counter to 0
     pc = 0;
     // initialize all registers to 0
